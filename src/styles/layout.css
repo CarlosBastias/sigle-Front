@@ -1,0 +1,127 @@
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  width: 100%;
+}
+
+.grid-modular {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+/* Navbar */
+.top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 3rem;
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-primary);
+}
+
+.brand-icon {
+  color: var(--color-secondary);
+  margin-right: 0.5rem;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+/* Auth Layout */
+.auth-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-app);
+}
+
+.auth-banner {
+  display: none;
+  flex: 1.2;
+  position: relative;
+  background-image: url('https://images.unsplash.com/photo-1538108149393-cebb518e1f0a?q=80&w=2070&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+}
+
+.auth-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(10,37,64,0.9) 0%, rgba(32,64,96,0.6) 100%);
+}
+
+.auth-banner-content {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  padding: 5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: white;
+}
+
+@media (min-width: 900px) {
+  .auth-banner { display: block; }
+}
+
+.auth-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  position: relative;
+}
+
+/* Hero Section */
+.hero-header {
+  background: linear-gradient(90deg, var(--color-primary) 0%, #17375E 100%);
+  border-radius: 16px;
+  padding: 4rem 3rem;
+  color: white;
+  margin-bottom: 3rem;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-header::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 50%;
+  background: url('https://images.unsplash.com/photo-1579684385127-1ef15d508118?q=80&w=2080&auto=format&fit=crop') no-repeat center / cover;
+  opacity: 0.15;
+  mask-image: linear-gradient(to left, black, transparent);
+  -webkit-mask-image: linear-gradient(to left, black, transparent);
+}
+
+.hero-title {
+  position: relative;
+  z-index: 2;
+  font-size: 2.5rem;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.hero-subtitle {
+  position: relative;
+  z-index: 2;
+  font-size: 1.1rem;
+  color: #B2C2D4;
+  max-width: 600px;
+}
