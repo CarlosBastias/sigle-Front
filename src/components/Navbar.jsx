@@ -2,14 +2,9 @@ import React from 'react';
 
 export default function Navbar({ user, onLogout }) {
   const handleLogout = () => {
-    // If we're using real Firebase Auth session
     if (user && user.uid) { 
-      // Import signOut & auth from firebase internally or handle at App level
-      // We'll safely delegate back to App to keep components pure here
       onLogout('firebase'); 
-    } else { 
-      onLogout('mock'); 
-    }
+    } 
   };
 
   return (

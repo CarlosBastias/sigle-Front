@@ -2,12 +2,10 @@ import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 
-// Importación de Estilos Modulares
 import './styles/global.css';
 import './styles/layout.css';
 import './styles/components.css';
 
-// Importación de Componentes
 import Login from './components/Login';
 import Navbar from './components/Navbar';
 import PortalPaciente from './pages/PortalPaciente';
@@ -47,7 +45,7 @@ export default function App() {
   }
 
   if (!user) {
-    return <Login onMockLogin={setUser} />;
+    return <Login />;
   }
 
   return (
