@@ -76,13 +76,13 @@ export default function Dashboard({ user }) {
       setBuscando(false);
     }
   };
-  
+
   const handleRutChange = (e) => {
     const soloValido = e.target.value.replace(/[^0-9kK-]/g, '');
     setRutBusqueda(soloValido);
   };
 
-  const registrarPaciente = async () => {
+ const registrarPaciente = async () => {
     if (!formPaciente.nombre || !formPaciente.rut || !formPaciente.especialidad || !formPaciente.diagnostico) return;
     setGuardando(true);
     setMensajePaciente(null);
@@ -247,7 +247,7 @@ export default function Dashboard({ user }) {
                 placeholder="Ej. 18234567-8"
                 style={{ flex: 1 }}
                 value={rutBusqueda}
-                onChange={e => setRutBusqueda(e.target.value)}
+                onChange={handleRutChange}
                 onKeyDown={e => e.key === 'Enter' && buscarPaciente()}
               />
               <button className="btn btn-primary" style={{ minWidth: '150px' }} onClick={buscarPaciente} disabled={buscando}>
