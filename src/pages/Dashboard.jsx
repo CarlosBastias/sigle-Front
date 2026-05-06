@@ -76,6 +76,11 @@ export default function Dashboard({ user }) {
       setBuscando(false);
     }
   };
+  
+  const handleRutChange = (e) => {
+    const soloValido = e.target.value.replace(/[^0-9kK-]/g, '');
+    setRutBusqueda(soloValido);
+  };
 
   const registrarPaciente = async () => {
     if (!formPaciente.nombre || !formPaciente.rut || !formPaciente.especialidad || !formPaciente.diagnostico) return;
