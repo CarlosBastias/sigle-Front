@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
 
-const API = 'https://sigle-api-gateway.onrender.com';
+const API = 'https://sigle-apigateway.onrender.com';
 
-async function apiFetch(path, token) {
-  const res = await fetch(`${API}${path}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+async function apiFetch(path, token, method = 'GET', body = null) {
+  const options = {
+    method,
+    headers: { 
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  };
+  if (body) options.body = JSON.stringify(body);
+  const res = await fetch(`${API}${path}`, options);
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
 }
@@ -22,10 +28,18 @@ export default function Dashboard({ user }) {
   const [pacienteBuscado, setPacienteBuscado] = useState(null);
   const [buscando, setBuscando] = useState(false);
 
+  // Estado formulario agregar paciente
+  const [mostrarFormPaciente, setMostrarFormPaciente] = useState(false);
+  const [mensajePaciente, setMensajePaciente] = useState(null);
+  const [guardando, setGuardando] = useState(false);
+  const [formPaciente, setFormPaciente] = useState({
+    nombre: '', apellido: '', rut: '', email: '', telefono: '',
+    fechaNacimiento: '', establecimientoId: '',
+    especialidad: '', diagnostico: '', perteneceGes: false
+  });
+
   useEffect(() => {
     if (!user?.token) return;
-    console.log('TOKEN:', user?.token);
-    console.log('HEADER:', `Bearer ${user?.token?.substring(0, 20)}...`);
     const cargar = async () => {
       try {
         const [m, e, l, med] = await Promise.all([
@@ -47,7 +61,7 @@ export default function Dashboard({ user }) {
     };
     cargar();
   }, [user?.token]);
-  
+
   const buscarPaciente = async () => {
     if (!rutBusqueda.trim()) return;
     setBuscando(true);
@@ -63,6 +77,39 @@ export default function Dashboard({ user }) {
     }
   };
 
+  const registrarPaciente = async () => {
+    if (!formPaciente.nombre || !formPaciente.rut || !formPaciente.especialidad || !formPaciente.diagnostico) return;
+    setGuardando(true);
+    setMensajePaciente(null);
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await apiFetch('/api/listas/registrar', token, 'POST', {
+        paciente: {
+          nombre: formPaciente.nombre,
+          apellido: formPaciente.apellido,
+          rut: formPaciente.rut,
+          email: formPaciente.email,
+          telefono: formPaciente.telefono,
+          fechaNacimiento: formPaciente.fechaNacimiento,
+          establecimientoId: parseInt(formPaciente.establecimientoId)
+        },
+        especialidad: formPaciente.especialidad,
+        diagnostico: formPaciente.diagnostico,
+        perteneceGes: formPaciente.perteneceGes
+      });
+      setMensajePaciente({ tipo: 'exito', texto: 'Paciente registrado en lista de espera correctamente.' });
+      setFormPaciente({ nombre: '', apellido: '', rut: '', email: '', telefono: '', fechaNacimiento: '', establecimientoId: '', especialidad: '', diagnostico: '', perteneceGes: false });
+      setMostrarFormPaciente(false);
+      // Recargar listas
+      const nuevasListas = await apiFetch('/api/listas', token);
+      setListas(nuevasListas);
+    } catch (err) {
+      setMensajePaciente({ tipo: 'error', texto: 'Error al registrar el paciente.' });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: '1rem' }}>
       <div style={{ fontSize: '3rem', color: 'var(--color-primary)' }}>✚</div>
@@ -73,7 +120,7 @@ export default function Dashboard({ user }) {
   if (error) return (
     <div className="container" style={{ paddingTop: '3rem' }}>
       <div style={{ backgroundColor: 'var(--status-high-bg)', color: 'var(--status-high-text)', padding: '1.5rem', borderRadius: '8px', fontWeight: 600 }}>
-         {error}
+        {error}
       </div>
     </div>
   );
@@ -87,7 +134,80 @@ export default function Dashboard({ user }) {
             <h1 style={{ fontSize: '2rem', color: 'var(--text-dark)', marginBottom: '0.2rem' }}>Centro Operativo Provincial</h1>
             <p style={{ color: 'var(--text-gray)' }}>Visión global y cuadro de mando integral de la red asistencial.</p>
           </div>
+          <button className="btn btn-primary" onClick={() => { setMostrarFormPaciente(!mostrarFormPaciente); setMensajePaciente(null); }}>
+            {mostrarFormPaciente ? 'Cancelar' : '+ Registrar Paciente'}
+          </button>
         </div>
+
+        {mensajePaciente && (
+          <div style={{ backgroundColor: mensajePaciente.tipo === 'exito' ? 'var(--status-low-bg)' : 'var(--status-high-bg)', color: mensajePaciente.tipo === 'exito' ? 'var(--status-low-text)' : 'var(--status-high-text)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', fontWeight: 600 }}>
+            {mensajePaciente.texto}
+          </div>
+        )}
+
+        {/* Formulario registrar paciente */}
+        {mostrarFormPaciente && (
+          <div className="premium-card" style={{ marginBottom: '3rem', borderLeft: '4px solid var(--color-primary)' }}>
+            <div className="card-header">
+              <h3 style={{ margin: 0 }}>Registrar Paciente en Lista de Espera</h3>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+              <div>
+                <label className="input-label">Nombre</label>
+                <input type="text" className="input-control" value={formPaciente.nombre} onChange={e => setFormPaciente({...formPaciente, nombre: e.target.value})} />
+              </div>
+              <div>
+                <label className="input-label">Apellido</label>
+                <input type="text" className="input-control" value={formPaciente.apellido} onChange={e => setFormPaciente({...formPaciente, apellido: e.target.value})} />
+              </div>
+              <div>
+                <label className="input-label">RUT</label>
+                <input type="text" className="input-control" placeholder="12345678-9" value={formPaciente.rut} onChange={e => setFormPaciente({...formPaciente, rut: e.target.value})} />
+              </div>
+              <div>
+                <label className="input-label">Email</label>
+                <input type="email" className="input-control" value={formPaciente.email} onChange={e => setFormPaciente({...formPaciente, email: e.target.value})} />
+              </div>
+              <div>
+                <label className="input-label">Teléfono</label>
+                <input type="text" className="input-control" value={formPaciente.telefono} onChange={e => setFormPaciente({...formPaciente, telefono: e.target.value})} />
+              </div>
+              <div>
+                <label className="input-label">Fecha de Nacimiento</label>
+                <input type="date" className="input-control" value={formPaciente.fechaNacimiento} onChange={e => setFormPaciente({...formPaciente, fechaNacimiento: e.target.value})} />
+              </div>
+              <div>
+                <label className="input-label">Establecimiento</label>
+                <select className="input-control" value={formPaciente.establecimientoId} onChange={e => setFormPaciente({...formPaciente, establecimientoId: e.target.value})}>
+                  <option value="">Selecciona un establecimiento</option>
+                  {establecimientos.map(e => (
+                    <option key={e.id} value={e.id}>{e.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="input-label">Especialidad</label>
+                <input type="text" className="input-control" placeholder="Ej. Cardiología" value={formPaciente.especialidad} onChange={e => setFormPaciente({...formPaciente, especialidad: e.target.value})} />
+              </div>
+              <div>
+                <label className="input-label">Diagnóstico</label>
+                <input type="text" className="input-control" value={formPaciente.diagnostico} onChange={e => setFormPaciente({...formPaciente, diagnostico: e.target.value})} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
+                <input type="checkbox" id="ges" checked={formPaciente.perteneceGes} onChange={e => setFormPaciente({...formPaciente, perteneceGes: e.target.checked})} />
+                <label htmlFor="ges" className="input-label" style={{ margin: 0 }}>Pertenece a GES</label>
+              </div>
+            </div>
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: '1.5rem', minWidth: '200px' }}
+              onClick={registrarPaciente}
+              disabled={guardando}
+            >
+              {guardando ? 'Registrando...' : 'Registrar en Lista de Espera'}
+            </button>
+          </div>
+        )}
 
         {/* Métricas */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
