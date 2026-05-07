@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function DashboardView({
   metricas, establecimientos, listas, medicos, loading, error,
@@ -6,6 +6,9 @@ export default function DashboardView({
   mensajePaciente, guardando, formPaciente,
   onBuscarPaciente, onRutChange, onRegistrarPaciente, onToggleForm, onFormChange
 }) {
+  const [mostrarListas, setMostrarListas] = useState(false);
+  const [mostrarEstablecimientos, setMostrarEstablecimientos] = useState(false);
+
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: '1rem' }}>
       <div style={{ fontSize: '3rem', color: 'var(--color-primary)' }}>✚</div>
@@ -94,12 +97,7 @@ export default function DashboardView({
                 <label htmlFor="ges" className="input-label" style={{ margin: 0 }}>Pertenece a GES</label>
               </div>
             </div>
-            <button
-              className="btn btn-primary"
-              style={{ marginTop: '1.5rem', minWidth: '200px' }}
-              onClick={onRegistrarPaciente}
-              disabled={guardando}
-            >
+            <button className="btn btn-primary" style={{ marginTop: '1.5rem', minWidth: '200px' }} onClick={onRegistrarPaciente} disabled={guardando}>
               {guardando ? 'Registrando...' : 'Registrar en Lista de Espera'}
             </button>
           </div>
@@ -142,9 +140,7 @@ export default function DashboardView({
                 onKeyDown={e => {
                   const permitidas = /^[0-9kK\-]$/;
                   const esTeclaControl = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'].includes(e.key);
-                  if (!permitidas.test(e.key) && !esTeclaControl) {
-                    e.preventDefault();
-                  }
+                  if (!permitidas.test(e.key) && !esTeclaControl) e.preventDefault();
                   if (e.key === 'Enter') onBuscarPaciente();
                 }}
               />
@@ -154,63 +150,70 @@ export default function DashboardView({
             </div>
             {pacienteBuscado && (
               <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '8px', background: pacienteBuscado.error ? 'var(--status-high-bg)' : 'var(--status-low-bg)', color: pacienteBuscado.error ? 'var(--status-high-text)' : 'var(--text-dark)' }}>
-                {pacienteBuscado.error
-                  ? pacienteBuscado.error
-                  : `${pacienteBuscado.nombre} ${pacienteBuscado.apellido} — RUT: ${pacienteBuscado.rut}`
-                }
+                {pacienteBuscado.error ? pacienteBuscado.error : `${pacienteBuscado.nombre} ${pacienteBuscado.apellido} — RUT: ${pacienteBuscado.rut}`}
               </div>
             )}
           </div>
         </div>
 
-        {/* Listas de espera */}
+        {/* Listas de espera - desplegable */}
         <div className="premium-card" style={{ marginBottom: '3rem' }}>
-          <div className="card-header">
+          <div className="card-header" style={{ cursor: 'pointer' }} onClick={() => setMostrarListas(!mostrarListas)}>
             <h3 style={{ margin: 0 }}>Listas de Espera</h3>
-            <span className="status-badge badge-media">{listas.length} registros</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span className="status-badge badge-media">{listas.length} registros</span>
+              <span style={{ fontSize: '1.2rem', color: 'var(--text-gray)' }}>{mostrarListas ? '▲' : '▼'}</span>
+            </div>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
-                  {['ID', 'Especialidad', 'Diagnóstico', 'Prioridad', 'Estado', 'GES'].map(h => (
-                    <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {listas.map(l => (
-                  <tr key={l.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>#{l.id}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{l.especialidad}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-gray)' }}>{l.diagnostico}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>
-                      <span className={`status-badge badge-${l.prioridad?.toLowerCase()}`}>{l.prioridad}</span>
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{l.estado}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{l.perteneceGes ? '✅' : '—'}</td>
+          {mostrarListas && (
+            <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
+                    {['ID', 'Especialidad', 'Diagnóstico', 'Prioridad', 'Estado', 'GES'].map(h => (
+                      <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {listas.map(l => (
+                    <tr key={l.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>#{l.id}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>{l.especialidad}</td>
+                      <td style={{ padding: '0.75rem 1rem', color: 'var(--text-gray)' }}>{l.diagnostico}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        <span className={`status-badge badge-${l.prioridad?.toLowerCase()}`}>{l.prioridad}</span>
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem' }}>{l.estado}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>{l.perteneceGes ? '✅' : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
-        {/* Establecimientos */}
+        {/* Establecimientos - desplegable */}
         <div className="premium-card">
-          <div className="card-header">
+          <div className="card-header" style={{ cursor: 'pointer' }} onClick={() => setMostrarEstablecimientos(!mostrarEstablecimientos)}>
             <h3 style={{ margin: 0 }}>Establecimientos de la Red</h3>
-            <span className="status-badge badge-baja">{establecimientos.length} activos</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span className="status-badge badge-baja">{establecimientos.length} activos</span>
+              <span style={{ fontSize: '1.2rem', color: 'var(--text-gray)' }}>{mostrarEstablecimientos ? '▲' : '▼'}</span>
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-            {establecimientos.map(e => (
-              <div key={e.id} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-subtle)' }}>
-                <div style={{ fontWeight: 700, color: 'var(--text-dark)', marginBottom: '0.3rem' }}>{e.nombre}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-gray)' }}>{e.region}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.2rem' }}>{e.tipo}</div>
-              </div>
-            ))}
-          </div>
+          {mostrarEstablecimientos && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+              {establecimientos.map(e => (
+                <div key={e.id} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-subtle)' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-dark)', marginBottom: '0.3rem' }}>{e.nombre}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-gray)' }}>{e.region}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.2rem' }}>{e.tipo}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
