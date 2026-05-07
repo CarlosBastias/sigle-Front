@@ -1,10 +1,14 @@
 import React from 'react';
+import { ESPECIALIDADES, TODOS_HORARIOS } from './PortalPacienteContainer';
 
 export default function PortalPacienteView({
   listas, citas, notificaciones, loading, error, mensajeCita,
-  mostrarFormCita, listaSeleccionada, medicos, medicoId, fechaHora, agendando,
-  onSolicitarCita, onCancelarCita, onSeleccionarLista, onCerrarFormCita,
-  onMedicoChange, onFechaHoraChange
+  medicos, mostrarFormNuevo, especialidadNueva, diagnosticoNuevo,
+  medicoIdNuevo, fechaNueva, horaNueva, horasOcupadasNuevo,
+  agendandoNuevo, cancelando,
+  onToggleFormNuevo, onEspecialidadChange, onDiagnosticoChange,
+  onMedicoNuevoChange, onFechaNuevaChange, onHoraNuevaChange,
+  onNuevaSolicitud, onCancelarCita
 }) {
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: '1rem' }}>
@@ -17,20 +21,79 @@ export default function PortalPacienteView({
     <div className="animate-entrance">
       <div className="container" style={{ paddingTop: '3rem' }}>
 
-        <div className="hero-header" style={{ marginBottom: '2.5rem' }}>
-          <h1 className="hero-title">Mi Portal de Salud</h1>
-          <p className="hero-subtitle">Seguimiento de tus derivaciones, citas y notificaciones de la Red Asistencial.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }}>
+          <div>
+            <h1 style={{ fontSize: '2rem', color: 'var(--text-dark)', marginBottom: '0.2rem' }}>Mi Portal de Salud</h1>
+            <p style={{ color: 'var(--text-gray)' }}>Seguimiento de tus derivaciones, citas y notificaciones de la Red Asistencial.</p>
+          </div>
+          <button className="btn btn-primary" onClick={onToggleFormNuevo}>
+            {mostrarFormNuevo ? 'Cancelar' : '+ Nueva Solicitud de Cita'}
+          </button>
         </div>
 
-        {error && (
-          <div style={{ backgroundColor: 'var(--status-high-bg)', color: 'var(--status-high-text)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', fontWeight: 600 }}>
-            {error}
-          </div>
-        )}
+        {error && <div style={{ backgroundColor: 'var(--status-high-bg)', color: 'var(--status-high-text)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', fontWeight: 600 }}>{error}</div>}
 
         {mensajeCita && (
           <div style={{ backgroundColor: mensajeCita.tipo === 'exito' ? 'var(--status-low-bg)' : 'var(--status-high-bg)', color: mensajeCita.tipo === 'exito' ? 'var(--status-low-text)' : 'var(--status-high-text)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', fontWeight: 600 }}>
             {mensajeCita.texto}
+          </div>
+        )}
+
+        {/* Formulario nueva solicitud */}
+        {mostrarFormNuevo && (
+          <div className="premium-card" style={{ marginBottom: '3rem', borderLeft: '4px solid var(--color-primary)' }}>
+            <div className="card-header">
+              <h3 style={{ margin: 0 }}>Nueva Solicitud de Cita</h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '500px', marginTop: '1rem' }}>
+              <div>
+                <label className="input-label">Especialidad</label>
+                <select className="input-control" value={especialidadNueva} onChange={e => onEspecialidadChange(e.target.value)}>
+                  <option value="">Selecciona una especialidad</option>
+                  {ESPECIALIDADES.map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="input-label">Motivo de consulta</label>
+                <input type="text" className="input-control" placeholder="Describe tu motivo" value={diagnosticoNuevo} onChange={e => onDiagnosticoChange(e.target.value)} />
+              </div>
+              {especialidadNueva && (
+                <div>
+                  <label className="input-label">Médico</label>
+                  <select className="input-control" value={medicoIdNuevo} onChange={e => onMedicoNuevoChange(e.target.value)}>
+                    <option value="">Selecciona un médico</option>
+                    {medicos.filter(m => m.especialidad === especialidadNueva).map(m => (
+                      <option key={m.id} value={m.id}>{m.nombre} — {m.especialidad}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {medicoIdNuevo && (
+                <div>
+                  <label className="input-label">Fecha</label>
+                  <input type="date" className="input-control" value={fechaNueva} min={new Date().toISOString().split('T')[0]} onChange={e => onFechaNuevaChange(e.target.value)} />
+                </div>
+              )}
+              {medicoIdNuevo && fechaNueva && (
+                <div>
+                  <label className="input-label">Hora Disponible</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    {TODOS_HORARIOS.map(hora => {
+                      const ocupada = horasOcupadasNuevo.some(h => h.startsWith(hora));
+                      return (
+                        <button key={hora} onClick={() => !ocupada && onHoraNuevaChange(hora)}
+                          style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid', borderColor: ocupada ? 'var(--border-color)' : horaNueva === hora ? 'var(--color-primary)' : 'var(--border-color)', backgroundColor: ocupada ? 'var(--bg-subtle)' : horaNueva === hora ? 'var(--color-primary)' : 'white', color: ocupada ? 'var(--text-light)' : horaNueva === hora ? 'white' : 'var(--text-dark)', cursor: ocupada ? 'not-allowed' : 'pointer', fontSize: '0.85rem', fontWeight: 600, textDecoration: ocupada ? 'line-through' : 'none' }}>
+                          {hora}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              <button className="btn btn-primary" onClick={onNuevaSolicitud} disabled={agendandoNuevo || !especialidadNueva || !diagnosticoNuevo || !medicoIdNuevo || !fechaNueva || !horaNueva}>
+                {agendandoNuevo ? 'Enviando...' : 'Confirmar Solicitud'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -62,7 +125,7 @@ export default function PortalPacienteView({
                     </div>
                     <span className={`status-badge badge-${item.prioridad?.toLowerCase()}`}>{item.prioridad}</span>
                   </div>
-                  <div style={{ marginBottom: '1rem' }}>
+                  <div>
                     <div style={{ marginBottom: '0.8rem' }}>
                       <span style={{ display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 700 }}>Motivo Clínico</span>
                       <span style={{ color: 'var(--text-dark)' }}>{item.diagnostico}</span>
@@ -72,54 +135,11 @@ export default function PortalPacienteView({
                       <span style={{ color: 'var(--text-dark)' }}>{item.estado}</span>
                     </div>
                   </div>
-                  <button
-                    className="btn btn-primary"
-                    style={{ width: '100%', padding: '0.6rem' }}
-                    onClick={() => onSeleccionarLista(item)}
-                  >
-                    Solicitar Cita
-                  </button>
                 </div>
               ))}
             </div>
           )
         }
-
-        {mostrarFormCita && listaSeleccionada && (
-          <div className="premium-card" style={{ marginBottom: '3rem', borderLeft: '4px solid var(--color-primary)' }}>
-            <div className="card-header">
-              <h3 style={{ margin: 0 }}>Solicitar Cita — {listaSeleccionada.especialidad}</h3>
-              <button className="btn btn-outline" onClick={onCerrarFormCita}>Cancelar</button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '500px', marginTop: '1rem' }}>
-              <div>
-                <label className="input-label">Médico</label>
-                <select className="input-control" value={medicoId} onChange={onMedicoChange}>
-                  <option value="">Selecciona un médico</option>
-                  {medicos.filter(m => m.especialidad === listaSeleccionada.especialidad).map(m => (
-                    <option key={m.id} value={m.id}>{m.nombre} — {m.especialidad}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="input-label">Fecha y Hora</label>
-                <input
-                  type="datetime-local"
-                  className="input-control"
-                  value={fechaHora}
-                  onChange={onFechaHoraChange}
-                />
-              </div>
-              <button
-                className="btn btn-primary"
-                onClick={onSolicitarCita}
-                disabled={agendando || !medicoId || !fechaHora}
-              >
-                {agendando ? 'Agendando...' : 'Confirmar Cita'}
-              </button>
-            </div>
-          </div>
-        )}
 
         <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-dark)', fontSize: '1.5rem' }}>Mis Citas</h2>
         {citas.length === 0
@@ -137,11 +157,7 @@ export default function PortalPacienteView({
                     {c.medico && <div style={{ marginTop: '0.3rem' }}><strong>Médico:</strong> {c.medico.nombre} — {c.medico.especialidad}</div>}
                   </div>
                   {c.estado === 'PROGRAMADA' && (
-                    <button
-                      className="btn btn-outline"
-                      style={{ width: '100%', padding: '0.6rem', color: 'var(--status-high-text)', borderColor: 'var(--status-high-text)' }}
-                      onClick={() => onCancelarCita(c.id)}
-                    >
+                    <button className="btn btn-outline" style={{ width: '100%', padding: '0.6rem', color: 'var(--status-high-text)', borderColor: 'var(--status-high-text)' }} onClick={() => onCancelarCita(c.id)} disabled={cancelando}>
                       Cancelar Cita
                     </button>
                   )}
