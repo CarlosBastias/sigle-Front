@@ -1,110 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { auth } from '../firebase';
+import React from 'react';
 
-const API = 'https://sigle-apigateway.onrender.com';
-
-async function apiFetch(path, token, method = 'GET', body = null) {
-  const options = {
-    method,
-    headers: { 
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  };
-  if (body) options.body = JSON.stringify(body);
-  const res = await fetch(`${API}${path}`, options);
-  if (!res.ok) throw new Error(`Error ${res.status}`);
-  return res.json();
-}
-
-export default function PortalPaciente({ user }) {
-  const [listas, setListas] = useState([]);
-  const [citas, setCitas] = useState([]);
-  const [notificaciones, setNotificaciones] = useState([]);
-  const [paciente, setPaciente] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Estado formulario solicitar cita
-  const [mostrarFormCita, setMostrarFormCita] = useState(false);
-  const [listaSeleccionada, setListaSeleccionada] = useState(null);
-  const [medicos, setMedicos] = useState([]);
-  const [medicoId, setMedicoId] = useState('');
-  const [fechaHora, setFechaHora] = useState('');
-  const [agendando, setAgendando] = useState(false);
-  const [mensajeCita, setMensajeCita] = useState(null);
-
-  useEffect(() => {
-    const cargar = async () => {
-      try {
-        const token = await auth.currentUser.getIdToken();
-        const pac = await apiFetch(`/api/listas/pacientes/email/${user.email}`, token).catch(() => null);
-        setPaciente(pac);
-
-        const [l, c, n, med] = await Promise.all([
-          apiFetch(`/api/listas/paciente/email/${user.email}`, token).catch(() => []),
-          pac ? apiFetch(`/api/citas/paciente/${pac.id}`, token).catch(() => []) : Promise.resolve([]),
-          apiFetch(`/api/pacientes/notificaciones/paciente/${user.email}`, token).catch(() => []),
-          apiFetch(`/api/citas/medicos`, token).catch(() => []),
-        ]);
-        setListas(l);
-        setCitas(c);
-        setNotificaciones(n);
-        setMedicos(med);
-      } catch (err) {
-        setError('Error al cargar datos del paciente.');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    cargar();
-  }, [user]);
-
-  const solicitarCita = async () => {
-    if (!medicoId || !fechaHora || !listaSeleccionada) return;
-    setAgendando(true);
-    setMensajeCita(null);
-    try {
-      const token = await auth.currentUser.getIdToken();
-      await apiFetch('/api/citas/agendar', token, 'POST', {
-        cita: {
-          pacienteId: paciente.id,
-          listaEsperaId: listaSeleccionada.id,
-          especialidad: listaSeleccionada.especialidad,
-          fechaHora: fechaHora
-        },
-        medicoId: parseInt(medicoId)
-      });
-      setMensajeCita({ tipo: 'exito', texto: 'Cita agendada correctamente.' });
-      setMostrarFormCita(false);
-      // Recargar citas
-      const token2 = await auth.currentUser.getIdToken();
-      const nuevasCitas = await apiFetch(`/api/citas/paciente/${paciente.id}`, token2).catch(() => []);
-      setCitas(nuevasCitas);
-    } catch (err) {
-      setMensajeCita({ tipo: 'error', texto: 'Error al agendar la cita.' });
-    } finally {
-      setAgendando(false);
-    }
-  };
-
-  const cancelarCita = async (citaId) => {
-    if (!window.confirm('¿Estás seguro que deseas cancelar esta cita?')) return;
-    try {
-      const token = await auth.currentUser.getIdToken();
-      await apiFetch(`/api/citas/${citaId}/cancelar`, token, 'POST', {
-        motivo: 'Cancelado por el paciente',
-        canceladoPor: 'PACIENTE'
-      });
-      const token2 = await auth.currentUser.getIdToken();
-      const nuevasCitas = await apiFetch(`/api/citas/paciente/${paciente.id}`, token2).catch(() => []);
-      setCitas(nuevasCitas);
-    } catch (err) {
-      alert('Error al cancelar la cita.');
-    }
-  };
-
+export default function PortalPacienteView({
+  listas, citas, notificaciones, loading, error, mensajeCita,
+  mostrarFormCita, listaSeleccionada, medicos, medicoId, fechaHora, agendando,
+  onSolicitarCita, onCancelarCita, onSeleccionarLista, onCerrarFormCita,
+  onMedicoChange, onFechaHoraChange
+}) {
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: '1rem' }}>
       <div style={{ fontSize: '3rem', color: 'var(--color-primary)' }}>✚</div>
@@ -174,7 +75,7 @@ export default function PortalPaciente({ user }) {
                   <button
                     className="btn btn-primary"
                     style={{ width: '100%', padding: '0.6rem' }}
-                    onClick={() => { setListaSeleccionada(item); setMostrarFormCita(true); setMensajeCita(null); }}
+                    onClick={() => onSeleccionarLista(item)}
                   >
                     Solicitar Cita
                   </button>
@@ -184,17 +85,16 @@ export default function PortalPaciente({ user }) {
           )
         }
 
-        {/* Formulario solicitar cita */}
         {mostrarFormCita && listaSeleccionada && (
           <div className="premium-card" style={{ marginBottom: '3rem', borderLeft: '4px solid var(--color-primary)' }}>
             <div className="card-header">
               <h3 style={{ margin: 0 }}>Solicitar Cita — {listaSeleccionada.especialidad}</h3>
-              <button className="btn btn-outline" onClick={() => setMostrarFormCita(false)}>Cancelar</button>
+              <button className="btn btn-outline" onClick={onCerrarFormCita}>Cancelar</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '500px', marginTop: '1rem' }}>
               <div>
                 <label className="input-label">Médico</label>
-                <select className="input-control" value={medicoId} onChange={e => setMedicoId(e.target.value)}>
+                <select className="input-control" value={medicoId} onChange={onMedicoChange}>
                   <option value="">Selecciona un médico</option>
                   {medicos.filter(m => m.especialidad === listaSeleccionada.especialidad).map(m => (
                     <option key={m.id} value={m.id}>{m.nombre} — {m.especialidad}</option>
@@ -207,12 +107,12 @@ export default function PortalPaciente({ user }) {
                   type="datetime-local"
                   className="input-control"
                   value={fechaHora}
-                  onChange={e => setFechaHora(e.target.value)}
+                  onChange={onFechaHoraChange}
                 />
               </div>
               <button
                 className="btn btn-primary"
-                onClick={solicitarCita}
+                onClick={onSolicitarCita}
                 disabled={agendando || !medicoId || !fechaHora}
               >
                 {agendando ? 'Agendando...' : 'Confirmar Cita'}
@@ -240,7 +140,7 @@ export default function PortalPaciente({ user }) {
                     <button
                       className="btn btn-outline"
                       style={{ width: '100%', padding: '0.6rem', color: 'var(--status-high-text)', borderColor: 'var(--status-high-text)' }}
-                      onClick={() => cancelarCita(c.id)}
+                      onClick={() => onCancelarCita(c.id)}
                     >
                       Cancelar Cita
                     </button>

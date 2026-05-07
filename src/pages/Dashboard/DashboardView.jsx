@@ -1,120 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { auth } from '../firebase';
+import React from 'react';
 
-const API = 'https://sigle-apigateway.onrender.com';
-
-async function apiFetch(path, token, method = 'GET', body = null) {
-  const options = {
-    method,
-    headers: { 
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  };
-  if (body) options.body = JSON.stringify(body);
-  const res = await fetch(`${API}${path}`, options);
-  if (!res.ok) throw new Error(`Error ${res.status}`);
-  return res.json();
-}
-
-export default function Dashboard({ user }) {
-  const [metricas, setMetricas] = useState(null);
-  const [establecimientos, setEstablecimientos] = useState([]);
-  const [listas, setListas] = useState([]);
-  const [medicos, setMedicos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [rutBusqueda, setRutBusqueda] = useState('');
-  const [pacienteBuscado, setPacienteBuscado] = useState(null);
-  const [buscando, setBuscando] = useState(false);
-
-  // Estado formulario agregar paciente
-  const [mostrarFormPaciente, setMostrarFormPaciente] = useState(false);
-  const [mensajePaciente, setMensajePaciente] = useState(null);
-  const [guardando, setGuardando] = useState(false);
-  const [formPaciente, setFormPaciente] = useState({
-    nombre: '', apellido: '', rut: '', email: '', telefono: '',
-    fechaNacimiento: '', establecimientoId: '',
-    especialidad: '', diagnostico: '', perteneceGes: false
-  });
-
-  useEffect(() => {
-    if (!user?.token) return;
-    const cargar = async () => {
-      try {
-        const [m, e, l, med] = await Promise.all([
-          apiFetch('/api/dashboard/metricas', user.token),
-          apiFetch('/api/establecimientos', user.token),
-          apiFetch('/api/listas', user.token),
-          apiFetch('/api/citas/medicos', user.token),
-        ]);
-        setMetricas(m);
-        setEstablecimientos(e);
-        setListas(l);
-        setMedicos(med);
-      } catch (err) {
-        setError('Error al cargar datos. Verifica que los servicios estén activos.');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    cargar();
-  }, [user?.token]);
-
-  const buscarPaciente = async () => {
-    if (!rutBusqueda.trim()) return;
-    setBuscando(true);
-    setPacienteBuscado(null);
-    try {
-      const token = await auth.currentUser.getIdToken();
-      const p = await apiFetch(`/api/listas/pacientes/rut/${rutBusqueda.trim()}`, token);
-      setPacienteBuscado(p);
-    } catch {
-      setPacienteBuscado({ error: 'Paciente no encontrado.' });
-    } finally {
-      setBuscando(false);
-    }
-  };
-
-  const handleRutChange = (e) => {
-    const soloValido = e.target.value.replace(/[^0-9kK-]/g, '');
-    setRutBusqueda(soloValido);
-  };
-
- const registrarPaciente = async () => {
-    if (!formPaciente.nombre || !formPaciente.rut || !formPaciente.especialidad || !formPaciente.diagnostico) return;
-    setGuardando(true);
-    setMensajePaciente(null);
-    try {
-      const token = await auth.currentUser.getIdToken();
-      await apiFetch('/api/listas/registrar', token, 'POST', {
-        paciente: {
-          nombre: formPaciente.nombre,
-          apellido: formPaciente.apellido,
-          rut: formPaciente.rut,
-          email: formPaciente.email,
-          telefono: formPaciente.telefono,
-          fechaNacimiento: formPaciente.fechaNacimiento,
-          establecimientoId: parseInt(formPaciente.establecimientoId)
-        },
-        especialidad: formPaciente.especialidad,
-        diagnostico: formPaciente.diagnostico,
-        perteneceGes: formPaciente.perteneceGes
-      });
-      setMensajePaciente({ tipo: 'exito', texto: 'Paciente registrado en lista de espera correctamente.' });
-      setFormPaciente({ nombre: '', apellido: '', rut: '', email: '', telefono: '', fechaNacimiento: '', establecimientoId: '', especialidad: '', diagnostico: '', perteneceGes: false });
-      setMostrarFormPaciente(false);
-      // Recargar listas
-      const nuevasListas = await apiFetch('/api/listas', token);
-      setListas(nuevasListas);
-    } catch (err) {
-      setMensajePaciente({ tipo: 'error', texto: 'Error al registrar el paciente.' });
-    } finally {
-      setGuardando(false);
-    }
-  };
-
+export default function DashboardView({
+  metricas, establecimientos, listas, medicos, loading, error,
+  rutBusqueda, pacienteBuscado, buscando, mostrarFormPaciente,
+  mensajePaciente, guardando, formPaciente,
+  onBuscarPaciente, onRutChange, onRegistrarPaciente, onToggleForm, onFormChange
+}) {
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: '1rem' }}>
       <div style={{ fontSize: '3rem', color: 'var(--color-primary)' }}>✚</div>
@@ -139,7 +30,7 @@ export default function Dashboard({ user }) {
             <h1 style={{ fontSize: '2rem', color: 'var(--text-dark)', marginBottom: '0.2rem' }}>Centro Operativo Provincial</h1>
             <p style={{ color: 'var(--text-gray)' }}>Visión global y cuadro de mando integral de la red asistencial.</p>
           </div>
-          <button className="btn btn-primary" onClick={() => { setMostrarFormPaciente(!mostrarFormPaciente); setMensajePaciente(null); }}>
+          <button className="btn btn-primary" onClick={onToggleForm}>
             {mostrarFormPaciente ? 'Cancelar' : '+ Registrar Paciente'}
           </button>
         </div>
@@ -159,31 +50,31 @@ export default function Dashboard({ user }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
               <div>
                 <label className="input-label">Nombre</label>
-                <input type="text" className="input-control" value={formPaciente.nombre} onChange={e => setFormPaciente({...formPaciente, nombre: e.target.value})} />
+                <input type="text" className="input-control" value={formPaciente.nombre} onChange={e => onFormChange('nombre', e.target.value)} />
               </div>
               <div>
                 <label className="input-label">Apellido</label>
-                <input type="text" className="input-control" value={formPaciente.apellido} onChange={e => setFormPaciente({...formPaciente, apellido: e.target.value})} />
+                <input type="text" className="input-control" value={formPaciente.apellido} onChange={e => onFormChange('apellido', e.target.value)} />
               </div>
               <div>
                 <label className="input-label">RUT</label>
-                <input type="text" className="input-control" placeholder="12345678-9" value={formPaciente.rut} onChange={e => setFormPaciente({...formPaciente, rut: e.target.value})} />
+                <input type="text" className="input-control" placeholder="12345678-9" value={formPaciente.rut} onChange={e => onFormChange('rut', e.target.value)} />
               </div>
               <div>
                 <label className="input-label">Email</label>
-                <input type="email" className="input-control" value={formPaciente.email} onChange={e => setFormPaciente({...formPaciente, email: e.target.value})} />
+                <input type="email" className="input-control" value={formPaciente.email} onChange={e => onFormChange('email', e.target.value)} />
               </div>
               <div>
                 <label className="input-label">Teléfono</label>
-                <input type="text" className="input-control" value={formPaciente.telefono} onChange={e => setFormPaciente({...formPaciente, telefono: e.target.value})} />
+                <input type="text" className="input-control" value={formPaciente.telefono} onChange={e => onFormChange('telefono', e.target.value)} />
               </div>
               <div>
                 <label className="input-label">Fecha de Nacimiento</label>
-                <input type="date" className="input-control" value={formPaciente.fechaNacimiento} onChange={e => setFormPaciente({...formPaciente, fechaNacimiento: e.target.value})} />
+                <input type="date" className="input-control" value={formPaciente.fechaNacimiento} onChange={e => onFormChange('fechaNacimiento', e.target.value)} />
               </div>
               <div>
                 <label className="input-label">Establecimiento</label>
-                <select className="input-control" value={formPaciente.establecimientoId} onChange={e => setFormPaciente({...formPaciente, establecimientoId: e.target.value})}>
+                <select className="input-control" value={formPaciente.establecimientoId} onChange={e => onFormChange('establecimientoId', e.target.value)}>
                   <option value="">Selecciona un establecimiento</option>
                   {establecimientos.map(e => (
                     <option key={e.id} value={e.id}>{e.nombre}</option>
@@ -192,21 +83,21 @@ export default function Dashboard({ user }) {
               </div>
               <div>
                 <label className="input-label">Especialidad</label>
-                <input type="text" className="input-control" placeholder="Ej. Cardiología" value={formPaciente.especialidad} onChange={e => setFormPaciente({...formPaciente, especialidad: e.target.value})} />
+                <input type="text" className="input-control" placeholder="Ej. Cardiología" value={formPaciente.especialidad} onChange={e => onFormChange('especialidad', e.target.value)} />
               </div>
               <div>
                 <label className="input-label">Diagnóstico</label>
-                <input type="text" className="input-control" value={formPaciente.diagnostico} onChange={e => setFormPaciente({...formPaciente, diagnostico: e.target.value})} />
+                <input type="text" className="input-control" value={formPaciente.diagnostico} onChange={e => onFormChange('diagnostico', e.target.value)} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
-                <input type="checkbox" id="ges" checked={formPaciente.perteneceGes} onChange={e => setFormPaciente({...formPaciente, perteneceGes: e.target.checked})} />
+                <input type="checkbox" id="ges" checked={formPaciente.perteneceGes} onChange={e => onFormChange('perteneceGes', e.target.checked)} />
                 <label htmlFor="ges" className="input-label" style={{ margin: 0 }}>Pertenece a GES</label>
               </div>
             </div>
             <button
               className="btn btn-primary"
               style={{ marginTop: '1.5rem', minWidth: '200px' }}
-              onClick={registrarPaciente}
+              onClick={onRegistrarPaciente}
               disabled={guardando}
             >
               {guardando ? 'Registrando...' : 'Registrar en Lista de Espera'}
@@ -247,10 +138,17 @@ export default function Dashboard({ user }) {
                 placeholder="Ej. 18234567-8"
                 style={{ flex: 1 }}
                 value={rutBusqueda}
-                onChange={handleRutChange}
-                onKeyDown={e => e.key === 'Enter' && buscarPaciente()}
+                onChange={onRutChange}
+                onKeyDown={e => {
+                  const permitidas = /^[0-9kK\-]$/;
+                  const esTeclaControl = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'].includes(e.key);
+                  if (!permitidas.test(e.key) && !esTeclaControl) {
+                    e.preventDefault();
+                  }
+                  if (e.key === 'Enter') onBuscarPaciente();
+                }}
               />
-              <button className="btn btn-primary" style={{ minWidth: '150px' }} onClick={buscarPaciente} disabled={buscando}>
+              <button className="btn btn-primary" style={{ minWidth: '150px' }} onClick={onBuscarPaciente} disabled={buscando}>
                 {buscando ? 'Buscando...' : 'Buscar Ficha'}
               </button>
             </div>

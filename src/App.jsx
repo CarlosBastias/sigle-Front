@@ -6,10 +6,10 @@ import './styles/global.css';
 import './styles/layout.css';
 import './styles/components.css';
 
-import Login from './components/Login';
-import Navbar from './components/Navbar';
-import PortalPaciente from './pages/PortalPaciente';
-import Dashboard from './pages/Dashboard';
+import LoginContainer from './components/Login/LoginContainer';
+import NavbarView from './components/Navbar/NavbarView';
+import PortalPacienteContainer from './pages/PortalPaciente/PortalPacienteContainer';
+import DashboardContainer from './pages/Dashboard/DashboardContainer';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -45,14 +45,14 @@ export default function App() {
   }
 
   if (!user) {
-    return <Login />;
+    return <LoginContainer />;
   }
 
   return (
     <>
-      <Navbar user={user} onLogout={() => { signOut(auth); setUser(null); }} />
+      <NavbarView user={user} onLogout={() => { signOut(auth); setUser(null); }} />
       <main>
-        {user.role === 'ADMIN' ? <Dashboard user={user} /> : <PortalPaciente user={user} />}
+        {user.role === 'ADMIN' ? <DashboardContainer user={user} /> : <PortalPacienteContainer user={user} />}
       </main>
     </>
   );
