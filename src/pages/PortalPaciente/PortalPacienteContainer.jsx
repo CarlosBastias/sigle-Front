@@ -18,6 +18,23 @@ async function apiFetch(path, token, method = 'GET', body = null) {
   return res.json();
 }
 
+function generarHorarios() {
+  const horarios = [];
+  for (let h = 8; h < 18; h++) {
+    horarios.push(`${String(h).padStart(2, '0')}:00`);
+    horarios.push(`${String(h).padStart(2, '0')}:30`);
+  }
+  return horarios;
+}
+
+export const ESPECIALIDADES = [
+  'Cardiología', 'Traumatología', 'Oftalmología', 'Neurología',
+  'Dermatología', 'Gastroenterología', 'Endocrinología', 'Reumatología',
+  'Neumología', 'Urología'
+];
+
+export const TODOS_HORARIOS = generarHorarios();
+
 export default function PortalPacienteContainer({ user }) {
   const [listas, setListas] = useState([]);
   const [citas, setCitas] = useState([]);
@@ -25,13 +42,20 @@ export default function PortalPacienteContainer({ user }) {
   const [paciente, setPaciente] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [mostrarFormCita, setMostrarFormCita] = useState(false);
-  const [listaSeleccionada, setListaSeleccionada] = useState(null);
   const [medicos, setMedicos] = useState([]);
-  const [medicoId, setMedicoId] = useState('');
-  const [fechaHora, setFechaHora] = useState('');
-  const [agendando, setAgendando] = useState(false);
   const [mensajeCita, setMensajeCita] = useState(null);
+
+  // Estado formulario nueva solicitud
+  const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false);
+  const [especialidadNueva, setEspecialidadNueva] = useState('');
+  const [diagnosticoNuevo, setDiagnosticoNuevo] = useState('');
+  const [medicoIdNuevo, setMedicoIdNuevo] = useState('');
+  const [fechaNueva, setFechaNueva] = useState('');
+  const [horaNueva, setHoraNueva] = useState('');
+  const [horasOcupadasNuevo, setHorasOcupadasNuevo] = useState([]);
+  const [agendandoNuevo, setAgendandoNuevo] = useState(false);
+
+  const [cancelando, setCancelando] = useState(false);
 
   useEffect(() => {
     const cargar = async () => {
@@ -52,7 +76,6 @@ export default function PortalPacienteContainer({ user }) {
         setMedicos(med);
       } catch (err) {
         setError('Error al cargar datos del paciente.');
-        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -60,35 +83,68 @@ export default function PortalPacienteContainer({ user }) {
     cargar();
   }, [user]);
 
-  const solicitarCita = async () => {
-    if (!medicoId || !fechaHora || !listaSeleccionada) return;
-    setAgendando(true);
+  useEffect(() => {
+    if (!medicoIdNuevo || !fechaNueva) { setHorasOcupadasNuevo([]); setHoraNueva(''); return; }
+    const cargar = async () => {
+      const token = await auth.currentUser.getIdToken();
+      const ocupadas = await apiFetch(`/api/citas/medico/${medicoIdNuevo}/horas-ocupadas?fecha=${fechaNueva}`, token).catch(() => []);
+      setHorasOcupadasNuevo(ocupadas);
+      setHoraNueva('');
+    };
+    cargar();
+  }, [medicoIdNuevo, fechaNueva]);
+
+  const nuevaSolicitud = async () => {
+    if (!especialidadNueva || !diagnosticoNuevo || !medicoIdNuevo || !fechaNueva || !horaNueva) return;
+    setAgendandoNuevo(true);
     setMensajeCita(null);
     try {
       const token = await auth.currentUser.getIdToken();
+      const nuevaLista = await apiFetch('/api/listas/registrar', token, 'POST', {
+        paciente: {
+          id: paciente.id,
+          rut: paciente.rut,
+          nombre: paciente.nombre,
+          apellido: paciente.apellido,
+          email: paciente.email,
+          telefono: paciente.telefono,
+          fechaNacimiento: paciente.fechaNacimiento,
+          establecimientoId: paciente.establecimientoId
+        },
+        especialidad: especialidadNueva,
+        diagnostico: diagnosticoNuevo,
+        perteneceGes: false
+      });
+
       await apiFetch('/api/citas/agendar', token, 'POST', {
         cita: {
           pacienteId: paciente.id,
-          listaEsperaId: listaSeleccionada.id,
-          especialidad: listaSeleccionada.especialidad,
-          fechaHora
+          listaEsperaId: nuevaLista.id,
+          especialidad: especialidadNueva,
+          fechaHora: `${fechaNueva}T${horaNueva}:00`
         },
-        medicoId: parseInt(medicoId)
+        medicoId: parseInt(medicoIdNuevo)
       });
-      setMensajeCita({ tipo: 'exito', texto: 'Cita agendada correctamente.' });
-      setMostrarFormCita(false);
-      const token2 = await auth.currentUser.getIdToken();
-      const nuevasCitas = await apiFetch(`/api/citas/paciente/${paciente.id}`, token2).catch(() => []);
+
+      const [nuevasListas, nuevasCitas] = await Promise.all([
+        apiFetch(`/api/listas/paciente/email/${user.email}`, token).catch(() => []),
+        apiFetch(`/api/citas/paciente/${paciente.id}`, token).catch(() => [])
+      ]);
+      setListas(nuevasListas);
       setCitas(nuevasCitas);
+      setMensajeCita({ tipo: 'exito', texto: 'Derivación y cita creadas correctamente.' });
+      setMostrarFormNuevo(false);
+      setEspecialidadNueva(''); setDiagnosticoNuevo(''); setMedicoIdNuevo(''); setFechaNueva(''); setHoraNueva('');
     } catch {
-      setMensajeCita({ tipo: 'error', texto: 'Error al agendar la cita.' });
+      setMensajeCita({ tipo: 'error', texto: 'Error al crear la solicitud.' });
     } finally {
-      setAgendando(false);
+      setAgendandoNuevo(false);
     }
   };
 
   const cancelarCita = async (citaId) => {
     if (!window.confirm('¿Estás seguro que deseas cancelar esta cita?')) return;
+    setCancelando(true);
     try {
       const token = await auth.currentUser.getIdToken();
       await apiFetch(`/api/citas/${citaId}/cancelar`, token, 'POST', {
@@ -100,6 +156,8 @@ export default function PortalPacienteContainer({ user }) {
       setCitas(nuevasCitas);
     } catch {
       alert('Error al cancelar la cita.');
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -111,18 +169,24 @@ export default function PortalPacienteContainer({ user }) {
       loading={loading}
       error={error}
       mensajeCita={mensajeCita}
-      mostrarFormCita={mostrarFormCita}
-      listaSeleccionada={listaSeleccionada}
       medicos={medicos}
-      medicoId={medicoId}
-      fechaHora={fechaHora}
-      agendando={agendando}
-      onSolicitarCita={solicitarCita}
+      mostrarFormNuevo={mostrarFormNuevo}
+      especialidadNueva={especialidadNueva}
+      diagnosticoNuevo={diagnosticoNuevo}
+      medicoIdNuevo={medicoIdNuevo}
+      fechaNueva={fechaNueva}
+      horaNueva={horaNueva}
+      horasOcupadasNuevo={horasOcupadasNuevo}
+      agendandoNuevo={agendandoNuevo}
+      cancelando={cancelando}
+      onToggleFormNuevo={() => { setMostrarFormNuevo(!mostrarFormNuevo); setMensajeCita(null); }}
+      onEspecialidadChange={(v) => { setEspecialidadNueva(v); setMedicoIdNuevo(''); setFechaNueva(''); setHoraNueva(''); }}
+      onDiagnosticoChange={(v) => setDiagnosticoNuevo(v)}
+      onMedicoNuevoChange={(v) => { setMedicoIdNuevo(v); setFechaNueva(''); setHoraNueva(''); }}
+      onFechaNuevaChange={(v) => { setFechaNueva(v); setHoraNueva(''); }}
+      onHoraNuevaChange={(v) => setHoraNueva(v)}
+      onNuevaSolicitud={nuevaSolicitud}
       onCancelarCita={cancelarCita}
-      onSeleccionarLista={(item) => { setListaSeleccionada(item); setMostrarFormCita(true); setMensajeCita(null); }}
-      onCerrarFormCita={() => setMostrarFormCita(false)}
-      onMedicoChange={(e) => setMedicoId(e.target.value)}
-      onFechaHoraChange={(e) => setFechaHora(e.target.value)}
     />
   );
 }
