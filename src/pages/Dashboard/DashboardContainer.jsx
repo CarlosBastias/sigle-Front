@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { auth } from '../../firebase';
 import DashboardView from './DashboardView';
 
-const API = 'https://sigle-apigateway.onrender.com';
+const API = import.meta.env.VITE_API_BASE_URL;
 
 async function apiFetch(path, token, method = 'GET', body = null) {
   const options = {
