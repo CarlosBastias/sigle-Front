@@ -1,16 +1,77 @@
-# React + Vite
+# Sigle-Front
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend del sistema SIGLE desarrollado con React y Vite. Tiene dos vistas: el portal del paciente y el dashboard administrativo.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19
+- Vite
+- Firebase Authentication
 
-## React Compiler
+## Requisitos
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Node.js 18+
+- Proyecto Firebase con Email/Password habilitado
+- API Gateway corriendo
 
-## Expanding the ESLint configuration
+## Instalación
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+Disponible en `http://localhost:5173`
+
+## Variables de entorno
+
+Copiar `.env.example` a `.env` y completar con los datos del proyecto Firebase:
+
+```env
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
+VITE_API_BASE_URL=http://localhost:8090
+```
+
+## Build producción
+
+```bash
+npm run build
+```
+
+## Estructura
+
+```
+src/
+├── components/
+│   ├── Login/
+│   │   ├── LoginContainer.jsx   # lógica de auth Firebase
+│   │   └── LoginView.jsx        # formulario login/registro
+│   └── Navbar/
+│       └── NavbarView.jsx
+├── pages/
+│   ├── Dashboard/
+│   │   ├── DashboardContainer.jsx
+│   │   └── DashboardView.jsx
+│   └── PortalPaciente/
+│       ├── PortalPacienteContainer.jsx
+│       └── PortalPacienteView.jsx
+├── firebase.js
+└── App.jsx
+```
+
+## Roles
+
+- Email con `admin` → Dashboard
+- Cualquier otro email → Portal Paciente
+
+## Patrones
+
+**Container/View:** los Container manejan estado y llamadas a la API, los View solo renderizan lo que reciben por props.
+
+**Observer:** `onAuthStateChanged` de Firebase detecta cambios en la sesión automáticamente.
