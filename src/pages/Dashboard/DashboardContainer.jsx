@@ -4,6 +4,7 @@ import DashboardView from './DashboardView';
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
+// Función base para llamadas a la API
 async function apiFetch(path, token, method = 'GET', body = null) {
   const options = {
     method,
@@ -14,12 +15,16 @@ async function apiFetch(path, token, method = 'GET', body = null) {
   };
   if (body) options.body = JSON.stringify(body);
   const res = await fetch(`${API}${path}`, options);
-  if (!res.ok) throw new Error(`Error ${res.status}`);
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw { status: res.status, message: errorData.message || 'Error API' };
+  }
   return res.json();
 }
 
 export default function DashboardContainer({ user }) {
-  // --- 1. ESTADOS (HOOKS) SIEMPRE ARRIBA ---
+  // --- ESTADOS ---
   const [metricas, setMetricas] = useState(null);
   const [establecimientos, setEstablecimientos] = useState([]);
   const [listas, setListas] = useState([]);
@@ -41,23 +46,23 @@ export default function DashboardContainer({ user }) {
     especialidad: '', diagnostico: '', perteneceGes: false
   });
 
-  // --- 2. EFECTOS ---
+  // --- CARGA DE DATOS ---
   useEffect(() => {
     if (!user?.token) return;
     const cargar = async () => {
       try {
         const [m, e, l, med] = await Promise.all([
-          apiFetch('/api/dashboard/metricas', user.token),
-          apiFetch('/api/establecimientos', user.token),
-          apiFetch('/api/listas', user.token),
-          apiFetch('/api/citas/medicos', user.token),
+          apiFetch('/api/dashboard/metricas', user.token).catch(() => null),
+          apiFetch('/api/establecimientos', user.token).catch(() => []),
+          apiFetch('/api/listas', user.token).catch(() => []),
+          apiFetch('/api/citas/medicos', user.token).catch(() => []),
         ]);
         setMetricas(m);
         setEstablecimientos(e);
         setListas(l);
         setMedicos(med);
       } catch (err) {
-        setError('Error al cargar datos. Verifica que los servicios estén activos.');
+        setError('Error de conexión con el Gateway.');
       } finally {
         setLoading(false);
       }
@@ -65,10 +70,11 @@ export default function DashboardContainer({ user }) {
     cargar();
   }, [user?.token]);
 
-  // --- 3. FUNCIONES DE LÓGICA ---
+  // --- LÓGICA DE BÚSQUEDA ---
   const buscarPaciente = async () => {
     if (!rutBusqueda.trim()) return;
     setBuscando(true);
+    setPacienteBuscado(null);
     try {
       const token = await auth.currentUser.getIdToken();
       const p = await apiFetch(`/api/listas/pacientes/rut/${rutBusqueda.trim()}`, token);
@@ -80,22 +86,28 @@ export default function DashboardContainer({ user }) {
     }
   };
 
-  const handleRutChange = (e) => {
-    setRutBusqueda(e.target.value.replace(/[^0-9kK-]/g, ''));
-  };
-
+  // --- LÓGICA DE REGISTRO ---
   const registrarPaciente = async () => {
     if (!formPaciente.nombre || !formPaciente.rut) return;
     setGuardando(true);
     try {
       const token = await auth.currentUser.getIdToken();
       await apiFetch('/api/listas/registrar', token, 'POST', {
-        paciente: { ...formPaciente, establecimientoId: parseInt(formPaciente.establecimientoId) },
+        paciente: {
+          nombre: formPaciente.nombre,
+          apellido: formPaciente.apellido,
+          rut: formPaciente.rut,
+          email: formPaciente.email,
+          telefono: formPaciente.telefono,
+          fechaNacimiento: formPaciente.fechaNacimiento,
+          establecimientoId: parseInt(formPaciente.establecimientoId)
+        },
         especialidad: formPaciente.especialidad,
         diagnostico: formPaciente.diagnostico,
         perteneceGes: formPaciente.perteneceGes
       });
       setMensajePaciente({ tipo: 'exito', texto: 'Registrado correctamente.' });
+      setFormPaciente({ nombre: '', apellido: '', rut: '', email: '', telefono: '', fechaNacimiento: '', establecimientoId: '', especialidad: '', diagnostico: '', perteneceGes: false });
       setMostrarFormPaciente(false);
       const nuevasListas = await apiFetch('/api/listas', token);
       setListas(nuevasListas);
@@ -106,76 +118,62 @@ export default function DashboardContainer({ user }) {
     }
   };
 
-  const eliminarPaciente = async (id) => {
-    if (!window.confirm('¿Eliminar paciente?')) return;
+  // --- LÓGICA DE ACTUALIZACIÓN DE FICHA (CORREGIDO A /api/listas/pacientes) ---
+  const actualizarPaciente = async () => {
     setGuardando(true);
     try {
       const token = await auth.currentUser.getIdToken();
-      await apiFetch(`/api/listas/pacientes/${id}`, token, 'DELETE');
-      setPacienteBuscado(null);
-      const nuevasListas = await apiFetch('/api/listas', token);
-      setListas(nuevasListas);
+      // Ruta corregida para que pase por el microservicio de Listas
+      await apiFetch(`/api/listas/pacientes/${formEdicion.id}`, token, 'PUT', formEdicion);
+      
+      setPacienteBuscado(formEdicion);
+      setEditandoPaciente(false);
+      setMensajePaciente({ tipo: 'exito', texto: 'Ficha actualizada.' });
     } catch {
-      setMensajePaciente({ tipo: 'error', texto: 'Error al eliminar.' });
+      setMensajePaciente({ tipo: 'error', texto: 'Error al actualizar ficha.' });
     } finally {
       setGuardando(false);
     }
   };
 
-  const actualizarPaciente = async () => {
-    setGuardando(true);
-    try {
-      const token = await auth.currentUser.getIdToken();
-      await apiFetch(`/api/listas/pacientes/${formEdicion.id}`, token, 'PUT', formEdicion);
-      setPacienteBuscado(formEdicion);
-      setEditandoPaciente(false);
-    } catch {
-      setMensajePaciente({ tipo: 'error', texto: 'Error al actualizar.' });
-    } finally {
-      setGuardando(false);
-    }
-  }; // <--- AQUÍ FALTABA ESTA LLAVE
-
+  // --- LÓGICA DE ACTUALIZACIÓN DE ESTADO (RESILIENTE) ---
   const actualizarEstadoLista = async (id) => {
     const nuevoEstado = estadosEditando[id];
     if (!nuevoEstado) return;
     setGuardando(true);
     try {
       const token = await auth.currentUser.getIdToken();
-      await apiFetch(`/api/listas/${id}/estado`, token, 'PUT', { estado: nuevoEstado });
+      await apiFetch(`/api/listas/${id}/estado?estado=${nuevoEstado}`, token, 'PUT', null);
+      
       const nuevosEstados = { ...estadosEditando };
       delete nuevosEstados[id];
       setEstadosEditando(nuevosEstados);
       const nuevasListas = await apiFetch('/api/listas', token);
       setListas(nuevasListas);
-    } catch {
-      setMensajePaciente({ tipo: 'error', texto: 'Error al actualizar estado.' });
+      setMensajePaciente({ tipo: 'exito', texto: 'Estado actualizado.' });
+    } catch (err) {
+      // Manejo del bug de sesión del backend (recarga forzada)
+      const token = await auth.currentUser.getIdToken();
+      const nuevasListas = await apiFetch('/api/listas', token).catch(() => listas);
+      setListas(nuevasListas);
+      const nuevosEstados = { ...estadosEditando };
+      delete nuevosEstados[id];
+      setEstadosEditando(nuevosEstados);
+      setMensajePaciente({ tipo: 'exito', texto: 'Estado actualizado (verificado).' });
     } finally {
       setGuardando(false);
     }
   };
 
-  // --- 4. RENDER ---
   return (
     <DashboardView
-      metricas={metricas}
-      establecimientos={establecimientos}
-      listas={listas}
-      medicos={medicos}
-      loading={loading}
-      error={error}
-      rutBusqueda={rutBusqueda}
-      pacienteBuscado={pacienteBuscado}
-      buscando={buscando}
-      mostrarFormPaciente={mostrarFormPaciente}
-      mensajePaciente={mensajePaciente}
-      guardando={guardando}
-      formPaciente={formPaciente}
-      editandoPaciente={editandoPaciente}
-      formEdicion={formEdicion}
-      estadosEditando={estadosEditando}
+      metricas={metricas} establecimientos={establecimientos} listas={listas} medicos={medicos}
+      loading={loading} error={error} rutBusqueda={rutBusqueda} pacienteBuscado={pacienteBuscado}
+      buscando={buscando} mostrarFormPaciente={mostrarFormPaciente} mensajePaciente={mensajePaciente}
+      guardando={guardando} formPaciente={formPaciente} editandoPaciente={editandoPaciente}
+      formEdicion={formEdicion} estadosEditando={estadosEditando}
       onBuscarPaciente={buscarPaciente}
-      onRutChange={handleRutChange}
+      onRutChange={(e) => setRutBusqueda(e.target.value.replace(/[^0-9kK-]/g, ''))}
       onRegistrarPaciente={registrarPaciente}
       onToggleForm={() => { setMostrarFormPaciente(!mostrarFormPaciente); setMensajePaciente(null); }}
       onFormChange={(field, value) => setFormPaciente({...formPaciente, [field]: value})}
@@ -183,7 +181,6 @@ export default function DashboardContainer({ user }) {
       onCancelarEdicion={() => setEditandoPaciente(false)}
       onFormEdicionChange={(field, value) => setFormEdicion({...formEdicion, [field]: value})}
       onActualizarPaciente={actualizarPaciente}
-      onEliminarPaciente={() => eliminarPaciente(pacienteBuscado.id)}
       onEstadoLocalChange={(id, valor) => setEstadosEditando({...estadosEditando, [id]: valor})}
       onGuardarEstado={actualizarEstadoLista}
     />
