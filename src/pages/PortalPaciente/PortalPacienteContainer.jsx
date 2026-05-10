@@ -54,8 +54,11 @@ export default function PortalPacienteContainer({ user }) {
   const [horaNueva, setHoraNueva] = useState('');
   const [horasOcupadasNuevo, setHorasOcupadasNuevo] = useState([]);
   const [agendandoNuevo, setAgendandoNuevo] = useState(false);
-
   const [cancelando, setCancelando] = useState(false);
+
+  // Datos extra para paciente nuevo
+  const [rutNuevo, setRutNuevo] = useState('');
+  const [fechaNacimientoNuevo, setFechaNacimientoNuevo] = useState('');
 
   useEffect(() => {
     const cargar = async () => {
@@ -67,7 +70,7 @@ export default function PortalPacienteContainer({ user }) {
         const [l, c, n, med] = await Promise.all([
           apiFetch(`/api/listas/paciente/email/${user.email}`, token).catch(() => []),
           pac ? apiFetch(`/api/citas/paciente/${pac.id}`, token).catch(() => []) : Promise.resolve([]),
-          apiFetch(`/api/pacientes/notificaciones/paciente/${user.email}`, token).catch(() => []),
+          pac ? apiFetch(`/api/pacientes/notificaciones/paciente/${pac.id}`, token).catch(() => []) : Promise.resolve([]),
           apiFetch(`/api/citas/medicos`, token).catch(() => []),
         ]);
         setListas(l);
@@ -96,21 +99,33 @@ export default function PortalPacienteContainer({ user }) {
 
   const nuevaSolicitud = async () => {
     if (!especialidadNueva || !diagnosticoNuevo || !medicoIdNuevo || !fechaNueva || !horaNueva) return;
+    if (!paciente && (!rutNuevo || !fechaNacimientoNuevo)) return;
     setAgendandoNuevo(true);
     setMensajeCita(null);
     try {
       const token = await auth.currentUser.getIdToken();
+
+      const datosPaciente = paciente ? {
+        id: paciente.id,
+        rut: paciente.rut,
+        nombre: paciente.nombre,
+        apellido: paciente.apellido,
+        email: paciente.email,
+        telefono: paciente.telefono,
+        fechaNacimiento: paciente.fechaNacimiento,
+        establecimientoId: paciente.establecimientoId
+      } : {
+        rut: rutNuevo,
+        nombre: user.email.split('@')[0],
+        apellido: '',
+        email: user.email,
+        telefono: '',
+        fechaNacimiento: fechaNacimientoNuevo,
+        establecimientoId: 1
+      };
+
       const nuevaLista = await apiFetch('/api/listas/registrar', token, 'POST', {
-        paciente: {
-          id: paciente.id,
-          rut: paciente.rut,
-          nombre: paciente.nombre,
-          apellido: paciente.apellido,
-          email: paciente.email,
-          telefono: paciente.telefono,
-          fechaNacimiento: paciente.fechaNacimiento,
-          establecimientoId: paciente.establecimientoId
-        },
+        paciente: datosPaciente,
         especialidad: especialidadNueva,
         diagnostico: diagnosticoNuevo,
         perteneceGes: false
@@ -118,7 +133,7 @@ export default function PortalPacienteContainer({ user }) {
 
       await apiFetch('/api/citas/agendar', token, 'POST', {
         cita: {
-          pacienteId: paciente.id,
+          pacienteId: nuevaLista.paciente?.id || paciente?.id,
           listaEsperaId: nuevaLista.id,
           especialidad: especialidadNueva,
           fechaHora: `${fechaNueva}T${horaNueva}:00`
@@ -126,15 +141,20 @@ export default function PortalPacienteContainer({ user }) {
         medicoId: parseInt(medicoIdNuevo)
       });
 
+      // Recargar paciente si era nuevo
+      const pacActualizado = await apiFetch(`/api/listas/pacientes/email/${user.email}`, token).catch(() => null);
+      setPaciente(pacActualizado);
+
       const [nuevasListas, nuevasCitas] = await Promise.all([
         apiFetch(`/api/listas/paciente/email/${user.email}`, token).catch(() => []),
-        apiFetch(`/api/citas/paciente/${paciente.id}`, token).catch(() => [])
+        pacActualizado ? apiFetch(`/api/citas/paciente/${pacActualizado.id}`, token).catch(() => []) : Promise.resolve([])
       ]);
       setListas(nuevasListas);
       setCitas(nuevasCitas);
       setMensajeCita({ tipo: 'exito', texto: 'Derivación y cita creadas correctamente.' });
       setMostrarFormNuevo(false);
       setEspecialidadNueva(''); setDiagnosticoNuevo(''); setMedicoIdNuevo(''); setFechaNueva(''); setHoraNueva('');
+      setRutNuevo(''); setFechaNacimientoNuevo('');
     } catch {
       setMensajeCita({ tipo: 'error', texto: 'Error al crear la solicitud.' });
     } finally {
@@ -170,6 +190,7 @@ export default function PortalPacienteContainer({ user }) {
       error={error}
       mensajeCita={mensajeCita}
       medicos={medicos}
+      pacienteExiste={!!paciente}
       mostrarFormNuevo={mostrarFormNuevo}
       especialidadNueva={especialidadNueva}
       diagnosticoNuevo={diagnosticoNuevo}
@@ -179,6 +200,8 @@ export default function PortalPacienteContainer({ user }) {
       horasOcupadasNuevo={horasOcupadasNuevo}
       agendandoNuevo={agendandoNuevo}
       cancelando={cancelando}
+      rutNuevo={rutNuevo}
+      fechaNacimientoNuevo={fechaNacimientoNuevo}
       onToggleFormNuevo={() => { setMostrarFormNuevo(!mostrarFormNuevo); setMensajeCita(null); }}
       onEspecialidadChange={(v) => { setEspecialidadNueva(v); setMedicoIdNuevo(''); setFechaNueva(''); setHoraNueva(''); }}
       onDiagnosticoChange={(v) => setDiagnosticoNuevo(v)}
@@ -187,6 +210,8 @@ export default function PortalPacienteContainer({ user }) {
       onHoraNuevaChange={(v) => setHoraNueva(v)}
       onNuevaSolicitud={nuevaSolicitud}
       onCancelarCita={cancelarCita}
+      onRutNuevoChange={(v) => setRutNuevo(v)}
+      onFechaNacimientoNuevoChange={(v) => setFechaNacimientoNuevo(v)}
     />
   );
 }
