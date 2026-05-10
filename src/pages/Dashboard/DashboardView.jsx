@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 export default function DashboardView({
   metricas, establecimientos, listas, medicos, loading, error,
   rutBusqueda, pacienteBuscado, buscando, mostrarFormPaciente,
-  mensajePaciente, guardando, formPaciente,
-  onBuscarPaciente, onRutChange, onRegistrarPaciente, onToggleForm, onFormChange
+  mensajePaciente, guardando, formPaciente, editandoPaciente, formEdicion, estadosEditando,
+  onBuscarPaciente, onRutChange, onRegistrarPaciente, onToggleForm, onFormChange,
+  onEditarClick, onCancelarEdicion, onFormEdicionChange, onActualizarPaciente, onEliminarPaciente,
+  onEstadoLocalChange, onGuardarEstado
 }) {
-  const [mostrarListas, setMostrarListas] = useState(false);
-  const [mostrarEstablecimientos, setMostrarEstablecimientos] = useState(false);
-
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: '1rem' }}>
       <div style={{ fontSize: '3rem', color: 'var(--color-primary)' }}>✚</div>
@@ -97,7 +96,12 @@ export default function DashboardView({
                 <label htmlFor="ges" className="input-label" style={{ margin: 0 }}>Pertenece a GES</label>
               </div>
             </div>
-            <button className="btn btn-primary" style={{ marginTop: '1.5rem', minWidth: '200px' }} onClick={onRegistrarPaciente} disabled={guardando}>
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: '1.5rem', minWidth: '200px' }}
+              onClick={onRegistrarPaciente}
+              disabled={guardando}
+            >
               {guardando ? 'Registrando...' : 'Registrar en Lista de Espera'}
             </button>
           </div>
@@ -125,11 +129,11 @@ export default function DashboardView({
             <h3 style={{ margin: 0 }}>Triaje y Gestión de Paciente</h3>
             <span className="status-badge badge-baja">Buscador Activo</span>
           </div>
-          <div style={{ maxWidth: '600px' }}>
+          <div style={{ maxWidth: '800px' }}>
             <p style={{ color: 'var(--text-gray)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
               Ingrese el RUT del paciente para localizar su ficha en las listas de espera.
             </p>
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
               <input
                 type="text"
                 className="input-control"
@@ -140,7 +144,9 @@ export default function DashboardView({
                 onKeyDown={e => {
                   const permitidas = /^[0-9kK\-]$/;
                   const esTeclaControl = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Enter'].includes(e.key);
-                  if (!permitidas.test(e.key) && !esTeclaControl) e.preventDefault();
+                  if (!permitidas.test(e.key) && !esTeclaControl) {
+                    e.preventDefault();
+                  }
                   if (e.key === 'Enter') onBuscarPaciente();
                 }}
               />
@@ -148,72 +154,140 @@ export default function DashboardView({
                 {buscando ? 'Buscando...' : 'Buscar Ficha'}
               </button>
             </div>
-            {pacienteBuscado && (
-              <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '8px', background: pacienteBuscado.error ? 'var(--status-high-bg)' : 'var(--status-low-bg)', color: pacienteBuscado.error ? 'var(--status-high-text)' : 'var(--text-dark)' }}>
-                {pacienteBuscado.error ? pacienteBuscado.error : `${pacienteBuscado.nombre} ${pacienteBuscado.apellido} — RUT: ${pacienteBuscado.rut}`}
+
+            {pacienteBuscado && !pacienteBuscado.error && (
+              <div className="premium-card" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)' }}>
+                {!editandoPaciente ? (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-dark)' }}>{pacienteBuscado.nombre} {pacienteBuscado.apellido}</h4>
+                        <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>RUT: {pacienteBuscado.rut}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-outline" onClick={onEditarClick}>Editar Datos</button>
+                        <button className="btn btn-outline" style={{ borderColor: 'var(--status-high-text)', color: 'var(--status-high-text)' }} onClick={onEliminarPaciente}>Eliminar</button>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', fontSize: '0.9rem' }}>
+                      <div><strong>Email:</strong> {pacienteBuscado.email || 'No registrado'}</div>
+                      <div><strong>Teléfono:</strong> {pacienteBuscado.telefono || 'No registrado'}</div>
+                      <div><strong>Nacimiento:</strong> {pacienteBuscado.fechaNacimiento || 'No registrado'}</div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h4 style={{ margin: 0 }}>Editando Datos de Paciente</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                      <div>
+                        <label className="input-label">Nombre</label>
+                        <input type="text" className="input-control" value={formEdicion.nombre} onChange={e => onFormEdicionChange('nombre', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="input-label">Apellido</label>
+                        <input type="text" className="input-control" value={formEdicion.apellido} onChange={e => onFormEdicionChange('apellido', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="input-label">Email</label>
+                        <input type="email" className="input-control" value={formEdicion.email} onChange={e => onFormEdicionChange('email', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="input-label">Teléfono</label>
+                        <input type="text" className="input-control" value={formEdicion.telefono} onChange={e => onFormEdicionChange('telefono', e.target.value)} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                      <button className="btn btn-primary" onClick={onActualizarPaciente} disabled={guardando}>Guardar Cambios</button>
+                      <button className="btn btn-outline" onClick={onCancelarEdicion}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {pacienteBuscado && pacienteBuscado.error && (
+              <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '8px', background: 'var(--status-high-bg)', color: 'var(--status-high-text)', fontWeight: 600 }}>
+                {pacienteBuscado.error}
               </div>
             )}
           </div>
         </div>
 
-        {/* Listas de espera - desplegable */}
+        {/* Listas de espera */}
         <div className="premium-card" style={{ marginBottom: '3rem' }}>
-          <div className="card-header" style={{ cursor: 'pointer' }} onClick={() => setMostrarListas(!mostrarListas)}>
+          <div className="card-header">
             <h3 style={{ margin: 0 }}>Listas de Espera</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <span className="status-badge badge-media">{listas.length} registros</span>
-              <span style={{ fontSize: '1.2rem', color: 'var(--text-gray)' }}>{mostrarListas ? '▲' : '▼'}</span>
-            </div>
+            <span className="status-badge badge-media">{listas.length} registros</span>
           </div>
-          {mostrarListas && (
-            <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
-                    {['ID', 'Especialidad', 'Diagnóstico', 'Prioridad', 'Estado', 'GES'].map(h => (
-                      <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {listas.map(l => (
-                    <tr key={l.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>#{l.id}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>{l.especialidad}</td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--text-gray)' }}>{l.diagnostico}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <span className={`status-badge badge-${l.prioridad?.toLowerCase()}`}>{l.prioridad}</span>
-                      </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>{l.estado}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>{l.perteneceGes ? '✅' : '—'}</td>
-                    </tr>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
+                  {['ID', 'Paciente', 'Especialidad', 'Diagnóstico', 'Prioridad', 'Estado', 'GES'].map(h => (
+                    <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-light)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.75rem' }}>{h}</th>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </tr>
+              </thead>
+              <tbody>
+                {listas.map(l => (
+                  <tr key={l.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>#{l.id}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text-dark)' }}>{l.paciente?.nombre} {l.paciente?.apellido}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-gray)' }}>{l.paciente?.rut}</div>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>{l.especialidad}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-gray)' }}>{l.diagnostico}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <span className={`status-badge badge-${l.prioridad?.toLowerCase()}`}>{l.prioridad}</span>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <select 
+                          className="input-control" 
+                          style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', width: 'auto' }}
+                          value={estadosEditando[l.id] || l.estado}
+                          onChange={(e) => onEstadoLocalChange(l.id, e.target.value)}
+                        >
+                          <option value="EN ESPERA">EN ESPERA</option>
+                          <option value="ASISTIDO">ASISTIDO</option>
+                          <option value="CANCELADO">CANCELADO</option>
+                          <option value="REPROGRAMADO">REPROGRAMADO</option>
+                        </select>
+                        {estadosEditando[l.id] && estadosEditando[l.id] !== l.estado && (
+                          <button 
+                            className="btn btn-primary" 
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}
+                            onClick={() => onGuardarEstado(l.id)}
+                          >
+                            Guardar
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>{l.perteneceGes ? '✅' : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Establecimientos - desplegable */}
+        {/* Establecimientos */}
         <div className="premium-card">
-          <div className="card-header" style={{ cursor: 'pointer' }} onClick={() => setMostrarEstablecimientos(!mostrarEstablecimientos)}>
+          <div className="card-header">
             <h3 style={{ margin: 0 }}>Establecimientos de la Red</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <span className="status-badge badge-baja">{establecimientos.length} activos</span>
-              <span style={{ fontSize: '1.2rem', color: 'var(--text-gray)' }}>{mostrarEstablecimientos ? '▲' : '▼'}</span>
-            </div>
+            <span className="status-badge badge-baja">{establecimientos.length} activos</span>
           </div>
-          {mostrarEstablecimientos && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-              {establecimientos.map(e => (
-                <div key={e.id} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-subtle)' }}>
-                  <div style={{ fontWeight: 700, color: 'var(--text-dark)', marginBottom: '0.3rem' }}>{e.nombre}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-gray)' }}>{e.region}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.2rem' }}>{e.tipo}</div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+            {establecimientos.map(e => (
+              <div key={e.id} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-subtle)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-dark)', marginBottom: '0.3rem' }}>{e.nombre}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-gray)' }}>{e.region}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.2rem' }}>{e.tipo}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
