@@ -19,6 +19,7 @@ async function apiFetch(path, token, method = 'GET', body = null) {
 }
 
 export default function DashboardContainer({ user }) {
+  // --- 1. ESTADOS (HOOKS) SIEMPRE ARRIBA ---
   const [metricas, setMetricas] = useState(null);
   const [establecimientos, setEstablecimientos] = useState([]);
   const [listas, setListas] = useState([]);
@@ -28,17 +29,19 @@ export default function DashboardContainer({ user }) {
   const [rutBusqueda, setRutBusqueda] = useState('');
   const [pacienteBuscado, setPacienteBuscado] = useState(null);
   const [buscando, setBuscando] = useState(false);
-
-  // Estado formulario agregar paciente
   const [mostrarFormPaciente, setMostrarFormPaciente] = useState(false);
   const [mensajePaciente, setMensajePaciente] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [editandoPaciente, setEditandoPaciente] = useState(false);
+  const [formEdicion, setFormEdicion] = useState(null);
+  const [estadosEditando, setEstadosEditando] = useState({});
   const [formPaciente, setFormPaciente] = useState({
     nombre: '', apellido: '', rut: '', email: '', telefono: '',
     fechaNacimiento: '', establecimientoId: '',
     especialidad: '', diagnostico: '', perteneceGes: false
   });
 
+  // --- 2. EFECTOS ---
   useEffect(() => {
     if (!user?.token) return;
     const cargar = async () => {
@@ -55,7 +58,6 @@ export default function DashboardContainer({ user }) {
         setMedicos(med);
       } catch (err) {
         setError('Error al cargar datos. Verifica que los servicios estén activos.');
-        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -63,10 +65,10 @@ export default function DashboardContainer({ user }) {
     cargar();
   }, [user?.token]);
 
+  // --- 3. FUNCIONES DE LÓGICA ---
   const buscarPaciente = async () => {
     if (!rutBusqueda.trim()) return;
     setBuscando(true);
-    setPacienteBuscado(null);
     try {
       const token = await auth.currentUser.getIdToken();
       const p = await apiFetch(`/api/listas/pacientes/rut/${rutBusqueda.trim()}`, token);
@@ -79,42 +81,81 @@ export default function DashboardContainer({ user }) {
   };
 
   const handleRutChange = (e) => {
-    const soloValido = e.target.value.replace(/[^0-9kK-]/g, '');
-    setRutBusqueda(soloValido);
+    setRutBusqueda(e.target.value.replace(/[^0-9kK-]/g, ''));
   };
 
   const registrarPaciente = async () => {
-    if (!formPaciente.nombre || !formPaciente.rut || !formPaciente.especialidad || !formPaciente.diagnostico) return;
+    if (!formPaciente.nombre || !formPaciente.rut) return;
     setGuardando(true);
-    setMensajePaciente(null);
     try {
       const token = await auth.currentUser.getIdToken();
       await apiFetch('/api/listas/registrar', token, 'POST', {
-        paciente: {
-          nombre: formPaciente.nombre,
-          apellido: formPaciente.apellido,
-          rut: formPaciente.rut,
-          email: formPaciente.email,
-          telefono: formPaciente.telefono,
-          fechaNacimiento: formPaciente.fechaNacimiento,
-          establecimientoId: parseInt(formPaciente.establecimientoId)
-        },
+        paciente: { ...formPaciente, establecimientoId: parseInt(formPaciente.establecimientoId) },
         especialidad: formPaciente.especialidad,
         diagnostico: formPaciente.diagnostico,
         perteneceGes: formPaciente.perteneceGes
       });
-      setMensajePaciente({ tipo: 'exito', texto: 'Paciente registrado en lista de espera correctamente.' });
-      setFormPaciente({ nombre: '', apellido: '', rut: '', email: '', telefono: '', fechaNacimiento: '', establecimientoId: '', especialidad: '', diagnostico: '', perteneceGes: false });
+      setMensajePaciente({ tipo: 'exito', texto: 'Registrado correctamente.' });
       setMostrarFormPaciente(false);
       const nuevasListas = await apiFetch('/api/listas', token);
       setListas(nuevasListas);
     } catch {
-      setMensajePaciente({ tipo: 'error', texto: 'Error al registrar el paciente.' });
+      setMensajePaciente({ tipo: 'error', texto: 'Error al registrar.' });
     } finally {
       setGuardando(false);
     }
   };
 
+  const eliminarPaciente = async (id) => {
+    if (!window.confirm('¿Eliminar paciente?')) return;
+    setGuardando(true);
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await apiFetch(`/api/listas/pacientes/${id}`, token, 'DELETE');
+      setPacienteBuscado(null);
+      const nuevasListas = await apiFetch('/api/listas', token);
+      setListas(nuevasListas);
+    } catch {
+      setMensajePaciente({ tipo: 'error', texto: 'Error al eliminar.' });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const actualizarPaciente = async () => {
+    setGuardando(true);
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await apiFetch(`/api/listas/pacientes/${formEdicion.id}`, token, 'PUT', formEdicion);
+      setPacienteBuscado(formEdicion);
+      setEditandoPaciente(false);
+    } catch {
+      setMensajePaciente({ tipo: 'error', texto: 'Error al actualizar.' });
+    } finally {
+      setGuardando(false);
+    }
+  }; // <--- AQUÍ FALTABA ESTA LLAVE
+
+  const actualizarEstadoLista = async (id) => {
+    const nuevoEstado = estadosEditando[id];
+    if (!nuevoEstado) return;
+    setGuardando(true);
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await apiFetch(`/api/listas/${id}/estado`, token, 'PUT', { estado: nuevoEstado });
+      const nuevosEstados = { ...estadosEditando };
+      delete nuevosEstados[id];
+      setEstadosEditando(nuevosEstados);
+      const nuevasListas = await apiFetch('/api/listas', token);
+      setListas(nuevasListas);
+    } catch {
+      setMensajePaciente({ tipo: 'error', texto: 'Error al actualizar estado.' });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  // --- 4. RENDER ---
   return (
     <DashboardView
       metricas={metricas}
@@ -130,11 +171,21 @@ export default function DashboardContainer({ user }) {
       mensajePaciente={mensajePaciente}
       guardando={guardando}
       formPaciente={formPaciente}
+      editandoPaciente={editandoPaciente}
+      formEdicion={formEdicion}
+      estadosEditando={estadosEditando}
       onBuscarPaciente={buscarPaciente}
       onRutChange={handleRutChange}
       onRegistrarPaciente={registrarPaciente}
       onToggleForm={() => { setMostrarFormPaciente(!mostrarFormPaciente); setMensajePaciente(null); }}
       onFormChange={(field, value) => setFormPaciente({...formPaciente, [field]: value})}
+      onEditarClick={() => { setFormEdicion(pacienteBuscado); setEditandoPaciente(true); }}
+      onCancelarEdicion={() => setEditandoPaciente(false)}
+      onFormEdicionChange={(field, value) => setFormEdicion({...formEdicion, [field]: value})}
+      onActualizarPaciente={actualizarPaciente}
+      onEliminarPaciente={() => eliminarPaciente(pacienteBuscado.id)}
+      onEstadoLocalChange={(id, valor) => setEstadosEditando({...estadosEditando, [id]: valor})}
+      onGuardarEstado={actualizarEstadoLista}
     />
   );
 }
