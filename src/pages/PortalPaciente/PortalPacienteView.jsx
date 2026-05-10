@@ -5,10 +5,11 @@ export default function PortalPacienteView({
   listas, citas, notificaciones, loading, error, mensajeCita,
   medicos, mostrarFormNuevo, especialidadNueva, diagnosticoNuevo,
   medicoIdNuevo, fechaNueva, horaNueva, horasOcupadasNuevo,
-  agendandoNuevo, cancelando,
+  agendandoNuevo, cancelando, pacienteExiste,
+  rutNuevo, fechaNacimientoNuevo,
   onToggleFormNuevo, onEspecialidadChange, onDiagnosticoChange,
   onMedicoNuevoChange, onFechaNuevaChange, onHoraNuevaChange,
-  onNuevaSolicitud, onCancelarCita
+  onNuevaSolicitud, onCancelarCita, onRutNuevoChange, onFechaNacimientoNuevoChange
 }) {
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: '1rem' }}>
@@ -46,6 +47,21 @@ export default function PortalPacienteView({
               <h3 style={{ margin: 0 }}>Nueva Solicitud de Cita</h3>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '500px', marginTop: '1rem' }}>
+
+              {/* Campos solo para paciente nuevo */}
+              {!pacienteExiste && (
+                <>
+                  <div>
+                    <label className="input-label">RUT</label>
+                    <input type="text" className="input-control" placeholder="12345678-9" value={rutNuevo} onChange={e => onRutNuevoChange(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="input-label">Fecha de Nacimiento</label>
+                    <input type="date" className="input-control" value={fechaNacimientoNuevo} onChange={e => onFechaNacimientoNuevoChange(e.target.value)} />
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="input-label">Especialidad</label>
                 <select className="input-control" value={especialidadNueva} onChange={e => onEspecialidadChange(e.target.value)}>
@@ -90,7 +106,7 @@ export default function PortalPacienteView({
                   </div>
                 </div>
               )}
-              <button className="btn btn-primary" onClick={onNuevaSolicitud} disabled={agendandoNuevo || !especialidadNueva || !diagnosticoNuevo || !medicoIdNuevo || !fechaNueva || !horaNueva}>
+              <button className="btn btn-primary" onClick={onNuevaSolicitud} disabled={agendandoNuevo || !especialidadNueva || !diagnosticoNuevo || !medicoIdNuevo || !fechaNueva || !horaNueva || (!pacienteExiste && (!rutNuevo || !fechaNacimientoNuevo))}>
                 {agendandoNuevo ? 'Enviando...' : 'Confirmar Solicitud'}
               </button>
             </div>
@@ -100,7 +116,7 @@ export default function PortalPacienteView({
         {notificaciones.length > 0 && (
           <div className="premium-card" style={{ marginBottom: '2rem', borderLeft: '4px solid var(--status-high-text)' }}>
             <div className="card-header">
-              <h3 style={{ margin: 0 }}>🔔 Notificaciones</h3>
+              <h3 style={{ margin: 0 }}> Notificaciones</h3>
               <span className="status-badge badge-alta">{notificaciones.length}</span>
             </div>
             {notificaciones.map(n => (
