@@ -36,7 +36,7 @@ export const ESPECIALIDADES = [
 
 export const TODOS_HORARIOS = generarHorarios();
 
-export default function PortalPacienteContainer({ user, onNotificaciones }) {
+export default function PortalPacienteContainer({ user, onNotificaciones, onMarcarLeidas }) {
   const [listas, setListas] = useState([]);
   const [citas, setCitas] = useState([]);
   const [notificaciones, setNotificaciones] = useState([]);
@@ -68,7 +68,8 @@ export default function PortalPacienteContainer({ user, onNotificaciones }) {
         const [l, c, n, med] = await Promise.all([
           apiFetch(`/api/listas/paciente/email/${user.email}`, token).catch(() => []),
           pac ? apiFetch(`/api/citas/paciente/${pac.id}`, token).catch(() => []) : Promise.resolve([]),
-          pac ? apiFetch(`/api/pacientes/notificaciones/paciente/${pac.id}`, token).catch(() => []) : Promise.resolve([]),
+          // Cambiado a /no-leidas
+          pac ? apiFetch(`/api/pacientes/notificaciones/paciente/${pac.id}/no-leidas`, token).catch(() => []) : Promise.resolve([]),
           apiFetch(`/api/citas/medicos`, token).catch(() => []),
         ]);
         setListas(l);
@@ -76,8 +77,17 @@ export default function PortalPacienteContainer({ user, onNotificaciones }) {
         setNotificaciones(n);
         setMedicos(med);
 
-        // Pasar notificaciones al App.jsx para la campana en la Navbar
         if (onNotificaciones) onNotificaciones(n);
+
+        // Pasar función marcarLeidas al App.jsx
+        if (onMarcarLeidas && pac) {
+          onMarcarLeidas(async () => {
+            const t = await auth.currentUser.getIdToken();
+            await apiFetch(`/api/pacientes/notificaciones/paciente/${pac.id}/marcar-leidas`, t, 'PUT').catch(() => {});
+            setNotificaciones([]);
+            if (onNotificaciones) onNotificaciones([]);
+          });
+        }
 
       } catch (err) {
         setError('Error al cargar datos del paciente.');

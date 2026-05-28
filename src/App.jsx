@@ -15,6 +15,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notificaciones, setNotificaciones] = useState([]);
+  const [marcarLeidas, setMarcarLeidas] = useState(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -31,6 +32,7 @@ export default function App() {
       } else {
         setUser(null);
         setNotificaciones([]);
+        setMarcarLeidas(null);
       }
       setLoading(false);
     });
@@ -56,12 +58,16 @@ export default function App() {
         user={user}
         onLogout={() => { signOut(auth); setUser(null); }}
         notificaciones={notificaciones}
-        onLimpiarNotificaciones={() => setNotificaciones([])}
+        onLimpiarNotificaciones={marcarLeidas || (() => setNotificaciones([]))}
       />
       <main>
         {user.role === 'ADMIN'
           ? <DashboardContainer user={user} />
-          : <PortalPacienteContainer user={user} onNotificaciones={setNotificaciones} />
+          : <PortalPacienteContainer
+              user={user}
+              onNotificaciones={setNotificaciones}
+              onMarcarLeidas={(fn) => setMarcarLeidas(() => fn)}
+            />
         }
       </main>
     </>
