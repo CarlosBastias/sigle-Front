@@ -14,6 +14,7 @@ async function apiFetch(path, token, method = 'GET', body = null) {
   };
   if (body) options.body = JSON.stringify(body);
   const res = await fetch(`${API}${path}`, options);
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
 }
@@ -35,7 +36,7 @@ export const ESPECIALIDADES = [
 
 export const TODOS_HORARIOS = generarHorarios();
 
-export default function PortalPacienteContainer({ user }) {
+export default function PortalPacienteContainer({ user, onNotificaciones }) {
   const [listas, setListas] = useState([]);
   const [citas, setCitas] = useState([]);
   const [notificaciones, setNotificaciones] = useState([]);
@@ -45,7 +46,6 @@ export default function PortalPacienteContainer({ user }) {
   const [medicos, setMedicos] = useState([]);
   const [mensajeCita, setMensajeCita] = useState(null);
 
-  // Estado formulario nueva solicitud
   const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false);
   const [especialidadNueva, setEspecialidadNueva] = useState('');
   const [diagnosticoNuevo, setDiagnosticoNuevo] = useState('');
@@ -55,8 +55,6 @@ export default function PortalPacienteContainer({ user }) {
   const [horasOcupadasNuevo, setHorasOcupadasNuevo] = useState([]);
   const [agendandoNuevo, setAgendandoNuevo] = useState(false);
   const [cancelando, setCancelando] = useState(false);
-
-  // Datos extra para paciente nuevo
   const [rutNuevo, setRutNuevo] = useState('');
   const [fechaNacimientoNuevo, setFechaNacimientoNuevo] = useState('');
 
@@ -77,6 +75,10 @@ export default function PortalPacienteContainer({ user }) {
         setCitas(c);
         setNotificaciones(n);
         setMedicos(med);
+
+        // Pasar notificaciones al App.jsx para la campana en la Navbar
+        if (onNotificaciones) onNotificaciones(n);
+
       } catch (err) {
         setError('Error al cargar datos del paciente.');
       } finally {
@@ -141,7 +143,6 @@ export default function PortalPacienteContainer({ user }) {
         medicoId: parseInt(medicoIdNuevo)
       });
 
-      // Recargar paciente si era nuevo
       const pacActualizado = await apiFetch(`/api/listas/pacientes/email/${user.email}`, token).catch(() => null);
       setPaciente(pacActualizado);
 
