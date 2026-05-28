@@ -14,6 +14,7 @@ import DashboardContainer from './pages/Dashboard/DashboardContainer';
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notificaciones, setNotificaciones] = useState([]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -29,6 +30,7 @@ export default function App() {
         });
       } else {
         setUser(null);
+        setNotificaciones([]);
       }
       setLoading(false);
     });
@@ -50,9 +52,17 @@ export default function App() {
 
   return (
     <>
-      <NavbarView user={user} onLogout={() => { signOut(auth); setUser(null); }} />
+      <NavbarView
+        user={user}
+        onLogout={() => { signOut(auth); setUser(null); }}
+        notificaciones={notificaciones}
+        onLimpiarNotificaciones={() => setNotificaciones([])}
+      />
       <main>
-        {user.role === 'ADMIN' ? <DashboardContainer user={user} /> : <PortalPacienteContainer user={user} />}
+        {user.role === 'ADMIN'
+          ? <DashboardContainer user={user} />
+          : <PortalPacienteContainer user={user} onNotificaciones={setNotificaciones} />
+        }
       </main>
     </>
   );

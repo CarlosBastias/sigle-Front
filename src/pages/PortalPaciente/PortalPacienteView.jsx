@@ -2,7 +2,7 @@ import React from 'react';
 import { ESPECIALIDADES, TODOS_HORARIOS } from './PortalPacienteContainer';
 
 export default function PortalPacienteView({
-  listas, citas, notificaciones, loading, error, mensajeCita,
+  listas, citas, loading, error, mensajeCita,
   medicos, mostrarFormNuevo, especialidadNueva, diagnosticoNuevo,
   medicoIdNuevo, fechaNueva, horaNueva, horasOcupadasNuevo,
   agendandoNuevo, cancelando, pacienteExiste,
@@ -48,7 +48,6 @@ export default function PortalPacienteView({
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '500px', marginTop: '1rem' }}>
 
-              {/* Campos solo para paciente nuevo */}
               {!pacienteExiste && (
                 <>
                   <div>
@@ -110,20 +109,6 @@ export default function PortalPacienteView({
                 {agendandoNuevo ? 'Enviando...' : 'Confirmar Solicitud'}
               </button>
             </div>
-          </div>
-        )}
-
-        {notificaciones.length > 0 && (
-          <div className="premium-card" style={{ marginBottom: '2rem', borderLeft: '4px solid var(--status-high-text)' }}>
-            <div className="card-header">
-              <h3 style={{ margin: 0 }}> Notificaciones</h3>
-              <span className="status-badge badge-alta">{notificaciones.length}</span>
-            </div>
-            {notificaciones.map(n => (
-              <div key={n.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem', color: 'var(--text-dark)' }}>
-                {n.mensaje || n.descripcion || JSON.stringify(n)}
-              </div>
-            ))}
           </div>
         )}
 
