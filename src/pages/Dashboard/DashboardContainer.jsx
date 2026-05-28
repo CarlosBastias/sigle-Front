@@ -4,7 +4,6 @@ import DashboardView from './DashboardView';
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
-// Función base para llamadas a la API
 async function apiFetch(path, token, method = 'GET', body = null) {
   const options = {
     method,
@@ -23,8 +22,54 @@ async function apiFetch(path, token, method = 'GET', body = null) {
   return res.json();
 }
 
+
+// FUNCIONES DE VALIDACIÓN DENTRO DEL DASH
+
+function validarFormPaciente(form) {
+  const errores = {};
+  const soloLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+  const rutValido = /^[0-9]{7,8}-[0-9kK]$/;
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const telefonoValido = /^[+0-9\s]{7,15}$/;
+
+  if (!form.nombre.trim()) errores.nombre = 'El nombre es obligatorio';
+  else if (!soloLetras.test(form.nombre)) errores.nombre = 'El nombre solo puede contener letras';
+
+  if (!form.apellido.trim()) errores.apellido = 'El apellido es obligatorio';
+  else if (!soloLetras.test(form.apellido)) errores.apellido = 'El apellido solo puede contener letras';
+
+  if (!form.rut.trim()) errores.rut = 'El RUT es obligatorio';
+  else if (!rutValido.test(form.rut)) errores.rut = 'Formato inválido. Ej: 12345678-9';
+
+  if (form.email && !emailValido.test(form.email)) errores.email = 'El email no es válido';
+
+  if (form.telefono && !telefonoValido.test(form.telefono)) errores.telefono = 'El teléfono no es válido';
+
+  if (!form.especialidad.trim()) errores.especialidad = 'La especialidad es obligatoria';
+  if (!form.diagnostico.trim()) errores.diagnostico = 'El diagnóstico es obligatorio';
+
+  return errores;
+}
+
+function validarFormEdicion(form) {
+  const errores = {};
+  const soloLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+  const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const telefonoValido = /^[+0-9\s]{7,15}$/;
+
+  if (!form.nombre.trim()) errores.nombre = 'El nombre es obligatorio';
+  else if (!soloLetras.test(form.nombre)) errores.nombre = 'El nombre solo puede contener letras';
+
+  if (!form.apellido.trim()) errores.apellido = 'El apellido es obligatorio';
+  else if (!soloLetras.test(form.apellido)) errores.apellido = 'El apellido solo puede contener letras';
+
+  if (form.email && !emailValido.test(form.email)) errores.email = 'El email no es válido';
+  if (form.telefono && !telefonoValido.test(form.telefono)) errores.telefono = 'El teléfono no es válido';
+
+  return errores;
+}
+
 export default function DashboardContainer({ user }) {
-  // --- ESTADOS ---
   const [metricas, setMetricas] = useState(null);
   const [establecimientos, setEstablecimientos] = useState([]);
   const [listas, setListas] = useState([]);
@@ -40,13 +85,14 @@ export default function DashboardContainer({ user }) {
   const [editandoPaciente, setEditandoPaciente] = useState(false);
   const [formEdicion, setFormEdicion] = useState(null);
   const [estadosEditando, setEstadosEditando] = useState({});
+  const [erroresForm, setErroresForm] = useState({});
+  const [erroresEdicion, setErroresEdicion] = useState({});
   const [formPaciente, setFormPaciente] = useState({
     nombre: '', apellido: '', rut: '', email: '', telefono: '',
     fechaNacimiento: '', establecimientoId: '',
     especialidad: '', diagnostico: '', perteneceGes: false
   });
 
-  // --- CARGA DE DATOS ---
   useEffect(() => {
     if (!user?.token) return;
     const cargar = async () => {
@@ -70,7 +116,6 @@ export default function DashboardContainer({ user }) {
     cargar();
   }, [user?.token]);
 
-  // --- LÓGICA DE BÚSQUEDA ---
   const buscarPaciente = async () => {
     if (!rutBusqueda.trim()) return;
     setBuscando(true);
@@ -86,9 +131,13 @@ export default function DashboardContainer({ user }) {
     }
   };
 
-  // --- LÓGICA DE REGISTRO ---
   const registrarPaciente = async () => {
-    if (!formPaciente.nombre || !formPaciente.rut) return;
+    const errores = validarFormPaciente(formPaciente);
+    if (Object.keys(errores).length > 0) {
+      setErroresForm(errores);
+      return;
+    }
+    setErroresForm({});
     setGuardando(true);
     try {
       const token = await auth.currentUser.getIdToken();
@@ -118,14 +167,17 @@ export default function DashboardContainer({ user }) {
     }
   };
 
-  // --- LÓGICA DE ACTUALIZACIÓN DE FICHA (CORREGIDO A /api/listas/pacientes) ---
   const actualizarPaciente = async () => {
+    const errores = validarFormEdicion(formEdicion);
+    if (Object.keys(errores).length > 0) {
+      setErroresEdicion(errores);
+      return;
+    }
+    setErroresEdicion({});
     setGuardando(true);
     try {
       const token = await auth.currentUser.getIdToken();
-      // Ruta corregida para que pase por el microservicio de Listas
       await apiFetch(`/api/listas/pacientes/${formEdicion.id}`, token, 'PUT', formEdicion);
-      
       setPacienteBuscado(formEdicion);
       setEditandoPaciente(false);
       setMensajePaciente({ tipo: 'exito', texto: 'Ficha actualizada.' });
@@ -136,7 +188,6 @@ export default function DashboardContainer({ user }) {
     }
   };
 
-  // --- LÓGICA DE ACTUALIZACIÓN DE ESTADO (RESILIENTE) ---
   const actualizarEstadoLista = async (id) => {
     const nuevoEstado = estadosEditando[id];
     if (!nuevoEstado) return;
@@ -144,7 +195,6 @@ export default function DashboardContainer({ user }) {
     try {
       const token = await auth.currentUser.getIdToken();
       await apiFetch(`/api/listas/${id}/estado?estado=${nuevoEstado}`, token, 'PUT', null);
-      
       const nuevosEstados = { ...estadosEditando };
       delete nuevosEstados[id];
       setEstadosEditando(nuevosEstados);
@@ -152,7 +202,6 @@ export default function DashboardContainer({ user }) {
       setListas(nuevasListas);
       setMensajePaciente({ tipo: 'exito', texto: 'Estado actualizado.' });
     } catch (err) {
-      // Manejo del bug de sesión del backend (recarga forzada)
       const token = await auth.currentUser.getIdToken();
       const nuevasListas = await apiFetch('/api/listas', token).catch(() => listas);
       setListas(nuevasListas);
@@ -172,14 +221,15 @@ export default function DashboardContainer({ user }) {
       buscando={buscando} mostrarFormPaciente={mostrarFormPaciente} mensajePaciente={mensajePaciente}
       guardando={guardando} formPaciente={formPaciente} editandoPaciente={editandoPaciente}
       formEdicion={formEdicion} estadosEditando={estadosEditando}
+      erroresForm={erroresForm} erroresEdicion={erroresEdicion}
       onBuscarPaciente={buscarPaciente}
       onRutChange={(e) => setRutBusqueda(e.target.value.replace(/[^0-9kK-]/g, ''))}
       onRegistrarPaciente={registrarPaciente}
-      onToggleForm={() => { setMostrarFormPaciente(!mostrarFormPaciente); setMensajePaciente(null); }}
-      onFormChange={(field, value) => setFormPaciente({...formPaciente, [field]: value})}
-      onEditarClick={() => { setFormEdicion(pacienteBuscado); setEditandoPaciente(true); }}
-      onCancelarEdicion={() => setEditandoPaciente(false)}
-      onFormEdicionChange={(field, value) => setFormEdicion({...formEdicion, [field]: value})}
+      onToggleForm={() => { setMostrarFormPaciente(!mostrarFormPaciente); setMensajePaciente(null); setErroresForm({}); }}
+      onFormChange={(field, value) => { setFormPaciente({...formPaciente, [field]: value}); setErroresForm({...erroresForm, [field]: ''}); }}
+      onEditarClick={() => { setFormEdicion(pacienteBuscado); setEditandoPaciente(true); setErroresEdicion({}); }}
+      onCancelarEdicion={() => { setEditandoPaciente(false); setErroresEdicion({}); }}
+      onFormEdicionChange={(field, value) => { setFormEdicion({...formEdicion, [field]: value}); setErroresEdicion({...erroresEdicion, [field]: ''}); }}
       onActualizarPaciente={actualizarPaciente}
       onEstadoLocalChange={(id, valor) => setEstadosEditando({...estadosEditando, [id]: valor})}
       onGuardarEstado={actualizarEstadoLista}

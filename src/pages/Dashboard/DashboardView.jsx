@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
 
+function InputError({ error }) {
+  if (!error) return null;
+  return <span style={{ color: 'var(--status-high-text)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>{error}</span>;
+}
+
 export default function DashboardView({
   metricas, establecimientos, listas, medicos, loading, error,
   rutBusqueda, pacienteBuscado, buscando, mostrarFormPaciente,
   mensajePaciente, guardando, formPaciente, editandoPaciente, formEdicion, estadosEditando,
+  erroresForm, erroresEdicion,
   onBuscarPaciente, onRutChange, onRegistrarPaciente, onToggleForm, onFormChange,
   onEditarClick, onCancelarEdicion, onFormEdicionChange, onActualizarPaciente,
   onEstadoLocalChange, onGuardarEstado
 }) {
-  // --- ESTADOS PARA SECCIONES DESPLEGABLES ---
   const [mostrarListas, setMostrarListas] = useState(true);
   const [mostrarEstablecimientos, setMostrarEstablecimientos] = useState(false);
 
@@ -48,19 +53,73 @@ export default function DashboardView({
           </div>
         )}
 
-        {/* FORMULARIO REGISTRAR (COMMIT ORIGINAL) */}
+        {/* FORMULARIO REGISTRAR */}
         {mostrarFormPaciente && (
           <div className="premium-card" style={{ marginBottom: '3rem', borderLeft: '4px solid var(--color-primary)' }}>
             <div className="card-header">
               <h3 style={{ margin: 0 }}>Registrar Paciente en Lista de Espera</h3>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-              <div><label className="input-label">Nombre</label><input type="text" className="input-control" value={formPaciente.nombre} onChange={e => onFormChange('nombre', e.target.value)} /></div>
-              <div><label className="input-label">Apellido</label><input type="text" className="input-control" value={formPaciente.apellido} onChange={e => onFormChange('apellido', e.target.value)} /></div>
-              <div><label className="input-label">RUT</label><input type="text" className="input-control" placeholder="12345678-9" value={formPaciente.rut} onChange={e => onFormChange('rut', e.target.value)} /></div>
-              <div><label className="input-label">Email</label><input type="email" className="input-control" value={formPaciente.email} onChange={e => onFormChange('email', e.target.value)} /></div>
-              <div><label className="input-label">Teléfono</label><input type="text" className="input-control" value={formPaciente.telefono} onChange={e => onFormChange('telefono', e.target.value)} /></div>
-              <div><label className="input-label">Fecha de Nacimiento</label><input type="date" className="input-control" value={formPaciente.fechaNacimiento} onChange={e => onFormChange('fechaNacimiento', e.target.value)} /></div>
+              <div>
+                <label className="input-label">Nombre *</label>
+                <input
+                  type="text"
+                  className="input-control"
+                  value={formPaciente.nombre}
+                  onChange={e => onFormChange('nombre', e.target.value)}
+                  style={{ borderColor: erroresForm.nombre ? 'var(--status-high-text)' : '' }}
+                />
+                <InputError error={erroresForm.nombre} />
+              </div>
+              <div>
+                <label className="input-label">Apellido *</label>
+                <input
+                  type="text"
+                  className="input-control"
+                  value={formPaciente.apellido}
+                  onChange={e => onFormChange('apellido', e.target.value)}
+                  style={{ borderColor: erroresForm.apellido ? 'var(--status-high-text)' : '' }}
+                />
+                <InputError error={erroresForm.apellido} />
+              </div>
+              <div>
+                <label className="input-label">RUT *</label>
+                <input
+                  type="text"
+                  className="input-control"
+                  placeholder="12345678-9"
+                  value={formPaciente.rut}
+                  onChange={e => onFormChange('rut', e.target.value)}
+                  style={{ borderColor: erroresForm.rut ? 'var(--status-high-text)' : '' }}
+                />
+                <InputError error={erroresForm.rut} />
+              </div>
+              <div>
+                <label className="input-label">Email</label>
+                <input
+                  type="email"
+                  className="input-control"
+                  value={formPaciente.email}
+                  onChange={e => onFormChange('email', e.target.value)}
+                  style={{ borderColor: erroresForm.email ? 'var(--status-high-text)' : '' }}
+                />
+                <InputError error={erroresForm.email} />
+              </div>
+              <div>
+                <label className="input-label">Teléfono</label>
+                <input
+                  type="text"
+                  className="input-control"
+                  value={formPaciente.telefono}
+                  onChange={e => onFormChange('telefono', e.target.value)}
+                  style={{ borderColor: erroresForm.telefono ? 'var(--status-high-text)' : '' }}
+                />
+                <InputError error={erroresForm.telefono} />
+              </div>
+              <div>
+                <label className="input-label">Fecha de Nacimiento</label>
+                <input type="date" className="input-control" value={formPaciente.fechaNacimiento} onChange={e => onFormChange('fechaNacimiento', e.target.value)} />
+              </div>
               <div>
                 <label className="input-label">Establecimiento</label>
                 <select className="input-control" value={formPaciente.establecimientoId} onChange={e => onFormChange('establecimientoId', e.target.value)}>
@@ -70,8 +129,29 @@ export default function DashboardView({
                   ))}
                 </select>
               </div>
-              <div><label className="input-label">Especialidad</label><input type="text" className="input-control" placeholder="Ej. Cardiología" value={formPaciente.especialidad} onChange={e => onFormChange('especialidad', e.target.value)} /></div>
-              <div><label className="input-label">Diagnóstico</label><input type="text" className="input-control" value={formPaciente.diagnostico} onChange={e => onFormChange('diagnostico', e.target.value)} /></div>
+              <div>
+                <label className="input-label">Especialidad *</label>
+                <input
+                  type="text"
+                  className="input-control"
+                  placeholder="Ej. Cardiología"
+                  value={formPaciente.especialidad}
+                  onChange={e => onFormChange('especialidad', e.target.value)}
+                  style={{ borderColor: erroresForm.especialidad ? 'var(--status-high-text)' : '' }}
+                />
+                <InputError error={erroresForm.especialidad} />
+              </div>
+              <div>
+                <label className="input-label">Diagnóstico *</label>
+                <input
+                  type="text"
+                  className="input-control"
+                  value={formPaciente.diagnostico}
+                  onChange={e => onFormChange('diagnostico', e.target.value)}
+                  style={{ borderColor: erroresForm.diagnostico ? 'var(--status-high-text)' : '' }}
+                />
+                <InputError error={erroresForm.diagnostico} />
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
                 <input type="checkbox" id="ges" checked={formPaciente.perteneceGes} onChange={e => onFormChange('perteneceGes', e.target.checked)} />
                 <label htmlFor="ges" className="input-label" style={{ margin: 0 }}>Pertenece a GES</label>
@@ -99,9 +179,9 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* GESTIÓN DE FICHA CLÍNICA (BÚSQUEDA + EDICIÓN AMPLIADA) */}
+        {/* GESTIÓN DE FICHA */}
         <div className="premium-card" style={{ marginBottom: '3rem' }}>
-          <div className="card-header"><h3> Gestión de Ficha Clínica</h3></div>
+          <div className="card-header"><h3>Gestión de Ficha Clínica</h3></div>
           <div style={{ maxWidth: '800px', marginTop: '1rem' }}>
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
               <input type="text" className="input-control" placeholder="RUT del paciente..." value={rutBusqueda} onChange={onRutChange} onKeyDown={e => e.key === 'Enter' && onBuscarPaciente()} />
@@ -115,9 +195,9 @@ export default function DashboardView({
                     <div>
                       <h4 style={{ margin: 0, fontSize: '1.2rem' }}>{pacienteBuscado.nombre} {pacienteBuscado.apellido}</h4>
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-gray)', marginTop: '0.4rem', display: 'flex', gap: '1.5rem' }}>
-                        <span> {pacienteBuscado.rut}</span>
-                        <span> {pacienteBuscado.email}</span>
-                        <span> {pacienteBuscado.telefono || 'Sin registro'}</span>
+                        <span>{pacienteBuscado.rut}</span>
+                        <span>{pacienteBuscado.email}</span>
+                        <span>{pacienteBuscado.telefono || 'Sin registro'}</span>
                       </div>
                     </div>
                     <button className="btn btn-outline" onClick={onEditarClick}>Editar Ficha</button>
@@ -125,11 +205,54 @@ export default function DashboardView({
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                     <div style={{ gridColumn: '1 / -1' }}><h4 style={{ margin: 0 }}>Actualizar Datos de Paciente</h4></div>
-                    <div><label className="input-label">Nombre</label><input type="text" className="input-control" value={formEdicion.nombre} onChange={e => onFormEdicionChange('nombre', e.target.value)} /></div>
-                    <div><label className="input-label">Apellido</label><input type="text" className="input-control" value={formEdicion.apellido} onChange={e => onFormEdicionChange('apellido', e.target.value)} /></div>
-                    <div><label className="input-label">Email</label><input type="email" className="input-control" value={formEdicion.email} onChange={e => onFormEdicionChange('email', e.target.value)} /></div>
-                    <div><label className="input-label">Teléfono</label><input type="text" className="input-control" value={formEdicion.telefono} onChange={e => onFormEdicionChange('telefono', e.target.value)} /></div>
-                    <div><label className="input-label">F. Nacimiento</label><input type="date" className="input-control" value={formEdicion.fechaNacimiento} onChange={e => onFormEdicionChange('fechaNacimiento', e.target.value)} /></div>
+                    <div>
+                      <label className="input-label">Nombre *</label>
+                      <input
+                        type="text"
+                        className="input-control"
+                        value={formEdicion.nombre}
+                        onChange={e => onFormEdicionChange('nombre', e.target.value)}
+                        style={{ borderColor: erroresEdicion.nombre ? 'var(--status-high-text)' : '' }}
+                      />
+                      <InputError error={erroresEdicion.nombre} />
+                    </div>
+                    <div>
+                      <label className="input-label">Apellido *</label>
+                      <input
+                        type="text"
+                        className="input-control"
+                        value={formEdicion.apellido}
+                        onChange={e => onFormEdicionChange('apellido', e.target.value)}
+                        style={{ borderColor: erroresEdicion.apellido ? 'var(--status-high-text)' : '' }}
+                      />
+                      <InputError error={erroresEdicion.apellido} />
+                    </div>
+                    <div>
+                      <label className="input-label">Email</label>
+                      <input
+                        type="email"
+                        className="input-control"
+                        value={formEdicion.email}
+                        onChange={e => onFormEdicionChange('email', e.target.value)}
+                        style={{ borderColor: erroresEdicion.email ? 'var(--status-high-text)' : '' }}
+                      />
+                      <InputError error={erroresEdicion.email} />
+                    </div>
+                    <div>
+                      <label className="input-label">Teléfono</label>
+                      <input
+                        type="text"
+                        className="input-control"
+                        value={formEdicion.telefono}
+                        onChange={e => onFormEdicionChange('telefono', e.target.value)}
+                        style={{ borderColor: erroresEdicion.telefono ? 'var(--status-high-text)' : '' }}
+                      />
+                      <InputError error={erroresEdicion.telefono} />
+                    </div>
+                    <div>
+                      <label className="input-label">F. Nacimiento</label>
+                      <input type="date" className="input-control" value={formEdicion.fechaNacimiento} onChange={e => onFormEdicionChange('fechaNacimiento', e.target.value)} />
+                    </div>
                     <div style={{ display: 'flex', gap: '0.5rem', gridColumn: '1 / -1', marginTop: '1rem' }}>
                       <button className="btn btn-primary" onClick={onActualizarPaciente}>Guardar Cambios</button>
                       <button className="btn btn-outline" onClick={onCancelarEdicion}>Cancelar</button>
@@ -138,10 +261,16 @@ export default function DashboardView({
                 )}
               </div>
             )}
+
+            {pacienteBuscado?.error && (
+              <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '8px', background: 'var(--status-high-bg)', color: 'var(--status-high-text)' }}>
+                {pacienteBuscado.error}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* LISTAS DE ESPERA (DESPLEGABLE) */}
+        {/* LISTAS DE ESPERA */}
         <div className="premium-card" style={{ marginBottom: '3rem' }}>
           <div className="card-header" style={{ cursor: 'pointer' }} onClick={() => setMostrarListas(!mostrarListas)}>
             <h3 style={{ margin: 0 }}>Monitor de Listas de Espera</h3>
@@ -191,7 +320,7 @@ export default function DashboardView({
           )}
         </div>
 
-        {/* ESTABLECIMIENTOS (DESPLEGABLE) */}
+        {/* ESTABLECIMIENTOS */}
         <div className="premium-card">
           <div className="card-header" style={{ cursor: 'pointer' }} onClick={() => setMostrarEstablecimientos(!mostrarEstablecimientos)}>
             <h3 style={{ margin: 0 }}>Establecimientos de la Red</h3>
