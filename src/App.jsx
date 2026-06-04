@@ -10,6 +10,7 @@ import LoginContainer from './components/Login/LoginContainer';
 import NavbarView from './components/Navbar/NavbarView';
 import PortalPacienteContainer from './pages/PortalPaciente/PortalPacienteContainer';
 import DashboardContainer from './pages/Dashboard/DashboardContainer';
+import MedicoContainer from './pages/Medico/MedicoContainer';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -20,13 +21,14 @@ export default function App() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const isFirebaseAdmin = firebaseUser.email.includes("admin");
+        const isAdmin = firebaseUser.email.includes("admin");
+        const isMedico = firebaseUser.email.includes("medico");
         const token = await firebaseUser.getIdToken();
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          role: isFirebaseAdmin ? 'ADMIN' : 'PACIENTE',
-          name: isFirebaseAdmin ? 'MD. Administrador' : firebaseUser.email,
+          role: isAdmin ? 'ADMIN' : isMedico ? 'MEDICO' : 'PACIENTE',
+          name: isAdmin ? 'MD. Administrador' : firebaseUser.email,
           token: token
         });
       } else {
@@ -63,6 +65,8 @@ export default function App() {
       <main>
         {user.role === 'ADMIN'
           ? <DashboardContainer user={user} />
+          : user.role === 'MEDICO'
+          ? <MedicoContainer user={user} />
           : <PortalPacienteContainer
               user={user}
               onNotificaciones={setNotificaciones}
