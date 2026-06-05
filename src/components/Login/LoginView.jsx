@@ -1,8 +1,13 @@
 import React from 'react';
 
+function InputError({ error }) {
+  if (!error) return null;
+  return <span style={{ color: 'var(--status-high-text)', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>{error}</span>;
+}
+
 export default function LoginView({
   modo, email, password, confirmPassword,
-  error, loading,
+  error, loading, erroresForm,
   onSubmit, onCambiarModo,
   onEmailChange, onPasswordChange, onConfirmPasswordChange
 }) {
@@ -60,8 +65,10 @@ export default function LoginView({
               <input
                 type="email" className="input-control"
                 placeholder="usuario@ejemplo.cl"
-                value={email} onChange={onEmailChange} required
+                value={email} onChange={onEmailChange}
+                style={{ borderColor: erroresForm?.email ? 'var(--status-high-text)' : '' }}
               />
+              <InputError error={erroresForm?.email} />
             </div>
 
             <div className="input-group">
@@ -75,9 +82,11 @@ export default function LoginView({
               </div>
               <input
                 type="password" className="input-control"
-                style={{ marginTop: '0.5rem' }} placeholder="••••••••"
-                value={password} onChange={onPasswordChange} required
+                style={{ marginTop: '0.5rem', borderColor: erroresForm?.password ? 'var(--status-high-text)' : '' }}
+                placeholder="••••••••"
+                value={password} onChange={onPasswordChange}
               />
+              <InputError error={erroresForm?.password} />
             </div>
 
             {modo === 'registro' && (
@@ -86,8 +95,10 @@ export default function LoginView({
                 <input
                   type="password" className="input-control"
                   placeholder="••••••••"
-                  value={confirmPassword} onChange={onConfirmPasswordChange} required
+                  value={confirmPassword} onChange={onConfirmPasswordChange}
+                  style={{ borderColor: erroresForm?.confirmPassword ? 'var(--status-high-text)' : '' }}
                 />
+                <InputError error={erroresForm?.confirmPassword} />
               </div>
             )}
 
