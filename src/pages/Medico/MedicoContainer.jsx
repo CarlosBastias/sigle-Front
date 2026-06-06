@@ -113,10 +113,6 @@ export default function MedicoContainer({ user }) {
       || pacientesLista.find(p => p.pacienteId === cita.pacienteId)
       || { id: null, prioridad: '—', estado: 'ESPERA', diagnostico: '' };
 
-    console.log('cita:', cita);
-    console.log('listaItem encontrado:', listaItem);
-    console.log('pacientesLista:', pacientesLista);
-
     setCitaActual(cita);
     setPacienteCompleto(pac);
     setPacienteEditando(listaItem);
@@ -134,23 +130,14 @@ export default function MedicoContainer({ user }) {
     try {
       const token = await auth.currentUser.getIdToken();
 
-      console.log('pacienteCompleto:', pacienteCompleto);
-      console.log('pacienteEditando:', pacienteEditando);
-      console.log('formEdicion:', formEdicion);
-
-      // Actualizar email y teléfono del paciente
       await apiFetch(`/api/listas/pacientes/${pacienteCompleto.id}`, token, 'PUT', {
         ...pacienteCompleto,
         email: formEdicion.email,
         telefono: formEdicion.telefono,
       });
 
-      // Actualizar estado de la lista de espera
       if (pacienteEditando.id) {
-        console.log('Actualizando estado lista:', pacienteEditando.id, formEdicion.estado);
         await apiFetch(`/api/listas/${pacienteEditando.id}/estado?estado=${formEdicion.estado}`, token, 'PUT', null);
-      } else {
-        console.log('pacienteEditando.id es null — no se actualiza estado');
       }
 
       setMensajeAccion({ tipo: 'exito', texto: 'Datos actualizados correctamente.' });
@@ -179,8 +166,7 @@ export default function MedicoContainer({ user }) {
       });
       setPacientesMap(mapa);
 
-    } catch (err) {
-      console.error('Error en guardarCambios:', err);
+    } catch {
       setMensajeAccion({ tipo: 'error', texto: 'Error al guardar cambios.' });
     } finally {
       setGuardando(false);
