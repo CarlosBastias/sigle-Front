@@ -9,10 +9,10 @@ export default function DashboardView({
   metricas, establecimientos, listas, medicos, loading, error,
   rutBusqueda, pacienteBuscado, buscando, mostrarFormPaciente,
   mensajePaciente, guardando, formPaciente, editandoPaciente, formEdicion, estadosEditando,
-  erroresForm, erroresEdicion,
+  erroresForm, erroresEdicion, paginaActual, totalPaginas, totalElementos,
   onBuscarPaciente, onRutChange, onRegistrarPaciente, onToggleForm, onFormChange,
   onEditarClick, onCancelarEdicion, onFormEdicionChange, onActualizarPaciente,
-  onEstadoLocalChange, onGuardarEstado
+  onEstadoLocalChange, onGuardarEstado, onCambiarPagina
 }) {
   const [mostrarListas, setMostrarListas] = useState(true);
   const [mostrarEstablecimientos, setMostrarEstablecimientos] = useState(false);
@@ -62,58 +62,27 @@ export default function DashboardView({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
               <div>
                 <label className="input-label">Nombre *</label>
-                <input
-                  type="text"
-                  className="input-control"
-                  value={formPaciente.nombre}
-                  onChange={e => onFormChange('nombre', e.target.value)}
-                  style={{ borderColor: erroresForm.nombre ? 'var(--status-high-text)' : '' }}
-                />
+                <input type="text" className="input-control" value={formPaciente.nombre} onChange={e => onFormChange('nombre', e.target.value)} style={{ borderColor: erroresForm.nombre ? 'var(--status-high-text)' : '' }} />
                 <InputError error={erroresForm.nombre} />
               </div>
               <div>
                 <label className="input-label">Apellido *</label>
-                <input
-                  type="text"
-                  className="input-control"
-                  value={formPaciente.apellido}
-                  onChange={e => onFormChange('apellido', e.target.value)}
-                  style={{ borderColor: erroresForm.apellido ? 'var(--status-high-text)' : '' }}
-                />
+                <input type="text" className="input-control" value={formPaciente.apellido} onChange={e => onFormChange('apellido', e.target.value)} style={{ borderColor: erroresForm.apellido ? 'var(--status-high-text)' : '' }} />
                 <InputError error={erroresForm.apellido} />
               </div>
               <div>
                 <label className="input-label">RUT *</label>
-                <input
-                  type="text"
-                  className="input-control"
-                  placeholder="12345678-9"
-                  value={formPaciente.rut}
-                  onChange={e => onFormChange('rut', e.target.value)}
-                  style={{ borderColor: erroresForm.rut ? 'var(--status-high-text)' : '' }}
-                />
+                <input type="text" className="input-control" placeholder="12345678-9" value={formPaciente.rut} onChange={e => onFormChange('rut', e.target.value)} style={{ borderColor: erroresForm.rut ? 'var(--status-high-text)' : '' }} />
                 <InputError error={erroresForm.rut} />
               </div>
               <div>
                 <label className="input-label">Email</label>
-                <input
-                  type="email"
-                  className="input-control"
-                  value={formPaciente.email}
-                  onChange={e => onFormChange('email', e.target.value)}
-                  style={{ borderColor: erroresForm.email ? 'var(--status-high-text)' : '' }}
-                />
+                <input type="email" className="input-control" value={formPaciente.email} onChange={e => onFormChange('email', e.target.value)} style={{ borderColor: erroresForm.email ? 'var(--status-high-text)' : '' }} />
                 <InputError error={erroresForm.email} />
               </div>
               <div>
                 <label className="input-label">Teléfono</label>
-                <input
-                  type="text"
-                  className="input-control"
-                  value={formPaciente.telefono}
-                  onChange={e => onFormChange('telefono', e.target.value)}
-                  style={{ borderColor: erroresForm.telefono ? 'var(--status-high-text)' : '' }}
-                />
+                <input type="text" className="input-control" value={formPaciente.telefono} onChange={e => onFormChange('telefono', e.target.value)} style={{ borderColor: erroresForm.telefono ? 'var(--status-high-text)' : '' }} />
                 <InputError error={erroresForm.telefono} />
               </div>
               <div>
@@ -124,32 +93,17 @@ export default function DashboardView({
                 <label className="input-label">Establecimiento</label>
                 <select className="input-control" value={formPaciente.establecimientoId} onChange={e => onFormChange('establecimientoId', e.target.value)}>
                   <option value="">Selecciona un establecimiento</option>
-                  {establecimientos.map(e => (
-                    <option key={e.id} value={e.id}>{e.nombre}</option>
-                  ))}
+                  {establecimientos.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
                 </select>
               </div>
               <div>
                 <label className="input-label">Especialidad *</label>
-                <input
-                  type="text"
-                  className="input-control"
-                  placeholder="Ej. Cardiología"
-                  value={formPaciente.especialidad}
-                  onChange={e => onFormChange('especialidad', e.target.value)}
-                  style={{ borderColor: erroresForm.especialidad ? 'var(--status-high-text)' : '' }}
-                />
+                <input type="text" className="input-control" placeholder="Ej. Cardiología" value={formPaciente.especialidad} onChange={e => onFormChange('especialidad', e.target.value)} style={{ borderColor: erroresForm.especialidad ? 'var(--status-high-text)' : '' }} />
                 <InputError error={erroresForm.especialidad} />
               </div>
               <div>
                 <label className="input-label">Diagnóstico *</label>
-                <input
-                  type="text"
-                  className="input-control"
-                  value={formPaciente.diagnostico}
-                  onChange={e => onFormChange('diagnostico', e.target.value)}
-                  style={{ borderColor: erroresForm.diagnostico ? 'var(--status-high-text)' : '' }}
-                />
+                <input type="text" className="input-control" value={formPaciente.diagnostico} onChange={e => onFormChange('diagnostico', e.target.value)} style={{ borderColor: erroresForm.diagnostico ? 'var(--status-high-text)' : '' }} />
                 <InputError error={erroresForm.diagnostico} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
@@ -167,7 +121,7 @@ export default function DashboardView({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
           <div className="metric-box">
             <div className="metric-title">Listas de Espera</div>
-            <div className="metric-number">{metricas?.totalListasEspera ?? listas.length}</div>
+            <div className="metric-number">{metricas?.totalListasEspera ?? totalElementos}</div>
           </div>
           <div className="metric-box" style={{ borderLeftColor: 'var(--status-low-text)' }}>
             <div className="metric-title">Médicos en Red</div>
@@ -187,7 +141,6 @@ export default function DashboardView({
               <input type="text" className="input-control" placeholder="RUT del paciente..." value={rutBusqueda} onChange={onRutChange} onKeyDown={e => e.key === 'Enter' && onBuscarPaciente()} />
               <button className="btn btn-primary" style={{ minWidth: '150px' }} onClick={onBuscarPaciente} disabled={buscando}>Buscar</button>
             </div>
-
             {pacienteBuscado && !pacienteBuscado.error && (
               <div className="premium-card" style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-color)', marginTop: '1.5rem' }}>
                 {!editandoPaciente ? (
@@ -207,46 +160,22 @@ export default function DashboardView({
                     <div style={{ gridColumn: '1 / -1' }}><h4 style={{ margin: 0 }}>Actualizar Datos de Paciente</h4></div>
                     <div>
                       <label className="input-label">Nombre *</label>
-                      <input
-                        type="text"
-                        className="input-control"
-                        value={formEdicion.nombre}
-                        onChange={e => onFormEdicionChange('nombre', e.target.value)}
-                        style={{ borderColor: erroresEdicion.nombre ? 'var(--status-high-text)' : '' }}
-                      />
+                      <input type="text" className="input-control" value={formEdicion.nombre} onChange={e => onFormEdicionChange('nombre', e.target.value)} style={{ borderColor: erroresEdicion.nombre ? 'var(--status-high-text)' : '' }} />
                       <InputError error={erroresEdicion.nombre} />
                     </div>
                     <div>
                       <label className="input-label">Apellido *</label>
-                      <input
-                        type="text"
-                        className="input-control"
-                        value={formEdicion.apellido}
-                        onChange={e => onFormEdicionChange('apellido', e.target.value)}
-                        style={{ borderColor: erroresEdicion.apellido ? 'var(--status-high-text)' : '' }}
-                      />
+                      <input type="text" className="input-control" value={formEdicion.apellido} onChange={e => onFormEdicionChange('apellido', e.target.value)} style={{ borderColor: erroresEdicion.apellido ? 'var(--status-high-text)' : '' }} />
                       <InputError error={erroresEdicion.apellido} />
                     </div>
                     <div>
                       <label className="input-label">Email</label>
-                      <input
-                        type="email"
-                        className="input-control"
-                        value={formEdicion.email}
-                        onChange={e => onFormEdicionChange('email', e.target.value)}
-                        style={{ borderColor: erroresEdicion.email ? 'var(--status-high-text)' : '' }}
-                      />
+                      <input type="email" className="input-control" value={formEdicion.email} onChange={e => onFormEdicionChange('email', e.target.value)} style={{ borderColor: erroresEdicion.email ? 'var(--status-high-text)' : '' }} />
                       <InputError error={erroresEdicion.email} />
                     </div>
                     <div>
                       <label className="input-label">Teléfono</label>
-                      <input
-                        type="text"
-                        className="input-control"
-                        value={formEdicion.telefono}
-                        onChange={e => onFormEdicionChange('telefono', e.target.value)}
-                        style={{ borderColor: erroresEdicion.telefono ? 'var(--status-high-text)' : '' }}
-                      />
+                      <input type="text" className="input-control" value={formEdicion.telefono} onChange={e => onFormEdicionChange('telefono', e.target.value)} style={{ borderColor: erroresEdicion.telefono ? 'var(--status-high-text)' : '' }} />
                       <InputError error={erroresEdicion.telefono} />
                     </div>
                     <div>
@@ -261,7 +190,6 @@ export default function DashboardView({
                 )}
               </div>
             )}
-
             {pacienteBuscado?.error && (
               <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '8px', background: 'var(--status-high-bg)', color: 'var(--status-high-text)' }}>
                 {pacienteBuscado.error}
@@ -275,48 +203,77 @@ export default function DashboardView({
           <div className="card-header" style={{ cursor: 'pointer' }} onClick={() => setMostrarListas(!mostrarListas)}>
             <h3 style={{ margin: 0 }}>Monitor de Listas de Espera</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <span className="status-badge badge-media">{listas.length} registros</span>
+              <span className="status-badge badge-media">{totalElementos} registros</span>
               <span style={{ fontSize: '1.2rem', color: 'var(--text-gray)' }}>{mostrarListas ? '▲' : '▼'}</span>
             </div>
           </div>
           {mostrarListas && (
-            <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                    {['ID', 'Especialidad', 'Diagnóstico', 'Prioridad', 'Estado', 'Acción', 'GES'].map(h => (
-                      <th key={h} style={{ padding: '0.75rem 1rem' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {listas.map(l => (
-                    <tr key={l.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>#{l.id}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>{l.especialidad}</td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'var(--text-gray)' }}>{l.diagnostico}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <span className={`status-badge badge-${l.prioridad?.toLowerCase()}`}>{l.prioridad}</span>
-                      </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <select className="input-control" style={{ width: 'auto', padding: '0.2rem' }} value={estadosEditando[l.id] || l.estado} onChange={(e) => onEstadoLocalChange(l.id, e.target.value)}>
-                          <option value="ESPERA">ESPERA</option>
-                          <option value="AGENDADO">AGENDADO</option>
-                          <option value="ATENDIDO">ATENDIDO</option>
-                          <option value="CANCELADO">CANCELADO</option>
-                        </select>
-                      </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        {estadosEditando[l.id] && estadosEditando[l.id] !== l.estado && (
-                          <button className="btn btn-primary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => onGuardarEstado(l.id)}>Guardar</button>
-                        )}
-                      </td>
-                      <td style={{ padding: '0.75rem 1rem' }}>{l.perteneceGes ? '✅' : '—'}</td>
+            <>
+              <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                      {['ID', 'Especialidad', 'Diagnóstico', 'Prioridad', 'Estado', 'Acción', 'GES'].map(h => (
+                        <th key={h} style={{ padding: '0.75rem 1rem' }}>{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {listas.map(l => (
+                      <tr key={l.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>#{l.id}</td>
+                        <td style={{ padding: '0.75rem 1rem' }}>{l.especialidad}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: 'var(--text-gray)' }}>{l.diagnostico}</td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <span className={`status-badge badge-${l.prioridad?.toLowerCase()}`}>{l.prioridad}</span>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          <select className="input-control" style={{ width: 'auto', padding: '0.2rem' }} value={estadosEditando[l.id] || l.estado} onChange={(e) => onEstadoLocalChange(l.id, e.target.value)}>
+                            <option value="ESPERA">ESPERA</option>
+                            <option value="AGENDADO">AGENDADO</option>
+                            <option value="ATENDIDO">ATENDIDO</option>
+                            <option value="CANCELADO">CANCELADO</option>
+                          </select>
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>
+                          {estadosEditando[l.id] && estadosEditando[l.id] !== l.estado && (
+                            <button className="btn btn-primary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => onGuardarEstado(l.id)}>Guardar</button>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.75rem 1rem' }}>{l.perteneceGes ? '✅' : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* PAGINACIÓN */}
+              {totalPaginas > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '0 0.5rem' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-gray)' }}>
+                    Página {paginaActual + 1} de {totalPaginas} — {totalElementos} registros
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      className="btn btn-outline"
+                      style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
+                      onClick={() => onCambiarPagina(paginaActual - 1)}
+                      disabled={paginaActual === 0}
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      className="btn btn-outline"
+                      style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
+                      onClick={() => onCambiarPagina(paginaActual + 1)}
+                      disabled={paginaActual >= totalPaginas - 1}
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 

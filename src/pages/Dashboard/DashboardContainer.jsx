@@ -14,16 +14,12 @@ async function apiFetch(path, token, method = 'GET', body = null) {
   };
   if (body) options.body = JSON.stringify(body);
   const res = await fetch(`${API}${path}`, options);
-  
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw { status: res.status, message: errorData.message || 'Error API' };
   }
   return res.json();
 }
-
-
-// FUNCIONES DE VALIDACIÓN DENTRO DEL DASH
 
 function validarFormPaciente(form) {
   const errores = {};
@@ -42,9 +38,7 @@ function validarFormPaciente(form) {
   else if (!rutValido.test(form.rut)) errores.rut = 'Formato inválido. Ej: 12345678-9';
 
   if (form.email && !emailValido.test(form.email)) errores.email = 'El email no es válido';
-
   if (form.telefono && !telefonoValido.test(form.telefono)) errores.telefono = 'El teléfono no es válido';
-
   if (!form.especialidad.trim()) errores.especialidad = 'La especialidad es obligatoria';
   if (!form.diagnostico.trim()) errores.diagnostico = 'El diagnóstico es obligatorio';
 
@@ -87,26 +81,40 @@ export default function DashboardContainer({ user }) {
   const [estadosEditando, setEstadosEditando] = useState({});
   const [erroresForm, setErroresForm] = useState({});
   const [erroresEdicion, setErroresEdicion] = useState({});
+
+  // PAGINACION
+  const [paginaActual, setPaginaActual] = useState(0);
+  const [totalPaginas, setTotalPaginas] = useState(0);
+  const [totalElementos, setTotalElementos] = useState(0);
+  const PAGE_SIZE = 10;
+
   const [formPaciente, setFormPaciente] = useState({
     nombre: '', apellido: '', rut: '', email: '', telefono: '',
     fechaNacimiento: '', establecimientoId: '',
     especialidad: '', diagnostico: '', perteneceGes: false
   });
 
+  const cargarListas = async (token, page = 0) => {
+    const resultado = await apiFetch(`/api/listas/paginado?page=${page}&size=${PAGE_SIZE}`, token).catch(() => ({ content: [], totalPages: 0, totalElements: 0 }));
+    setListas(resultado.content || []);
+    setTotalPaginas(resultado.totalPages || 0);
+    setTotalElementos(resultado.totalElements || 0);
+    setPaginaActual(resultado.currentPage || 0);
+  };
+
   useEffect(() => {
     if (!user?.token) return;
     const cargar = async () => {
       try {
-        const [m, e, l, med] = await Promise.all([
+        const [m, e, med] = await Promise.all([
           apiFetch('/api/dashboard/metricas', user.token).catch(() => null),
           apiFetch('/api/establecimientos', user.token).catch(() => []),
-          apiFetch('/api/listas', user.token).catch(() => []),
           apiFetch('/api/citas/medicos', user.token).catch(() => []),
         ]);
         setMetricas(m);
         setEstablecimientos(e);
-        setListas(l);
         setMedicos(med);
+        await cargarListas(user.token, 0);
       } catch (err) {
         setError('Error de conexión con el Gateway.');
       } finally {
@@ -115,6 +123,11 @@ export default function DashboardContainer({ user }) {
     };
     cargar();
   }, [user?.token]);
+
+  const cambiarPagina = async (nuevaPagina) => {
+    const token = await auth.currentUser.getIdToken();
+    await cargarListas(token, nuevaPagina);
+  };
 
   const buscarPaciente = async () => {
     if (!rutBusqueda.trim()) return;
@@ -158,8 +171,8 @@ export default function DashboardContainer({ user }) {
       setMensajePaciente({ tipo: 'exito', texto: 'Registrado correctamente.' });
       setFormPaciente({ nombre: '', apellido: '', rut: '', email: '', telefono: '', fechaNacimiento: '', establecimientoId: '', especialidad: '', diagnostico: '', perteneceGes: false });
       setMostrarFormPaciente(false);
-      const nuevasListas = await apiFetch('/api/listas', token);
-      setListas(nuevasListas);
+      const token2 = await auth.currentUser.getIdToken();
+      await cargarListas(token2, paginaActual);
     } catch {
       setMensajePaciente({ tipo: 'error', texto: 'Error al registrar.' });
     } finally {
@@ -198,13 +211,12 @@ export default function DashboardContainer({ user }) {
       const nuevosEstados = { ...estadosEditando };
       delete nuevosEstados[id];
       setEstadosEditando(nuevosEstados);
-      const nuevasListas = await apiFetch('/api/listas', token);
-      setListas(nuevasListas);
+      const token2 = await auth.currentUser.getIdToken();
+      await cargarListas(token2, paginaActual);
       setMensajePaciente({ tipo: 'exito', texto: 'Estado actualizado.' });
-    } catch (err) {
+    } catch {
       const token = await auth.currentUser.getIdToken();
-      const nuevasListas = await apiFetch('/api/listas', token).catch(() => listas);
-      setListas(nuevasListas);
+      await cargarListas(token, paginaActual).catch(() => {});
       const nuevosEstados = { ...estadosEditando };
       delete nuevosEstados[id];
       setEstadosEditando(nuevosEstados);
@@ -222,6 +234,8 @@ export default function DashboardContainer({ user }) {
       guardando={guardando} formPaciente={formPaciente} editandoPaciente={editandoPaciente}
       formEdicion={formEdicion} estadosEditando={estadosEditando}
       erroresForm={erroresForm} erroresEdicion={erroresEdicion}
+      paginaActual={paginaActual} totalPaginas={totalPaginas} totalElementos={totalElementos}
+      onCambiarPagina={cambiarPagina}
       onBuscarPaciente={buscarPaciente}
       onRutChange={(e) => setRutBusqueda(e.target.value.replace(/[^0-9kK-]/g, ''))}
       onRegistrarPaciente={registrarPaciente}
