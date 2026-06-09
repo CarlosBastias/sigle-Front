@@ -151,7 +151,6 @@ export default function MedicoView({
             }}
             onClick={e => e.stopPropagation()}
           >
-            {/* HEADER */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
               <div>
                 <h2 style={{ margin: 0, color: 'var(--text-dark)' }}>{pacienteCompleto.nombre} {pacienteCompleto.apellido}</h2>
@@ -160,7 +159,6 @@ export default function MedicoView({
               <button onClick={onCancelarEdicion} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-gray)' }}>✕</button>
             </div>
 
-            {/* INFO NO EDITABLE */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem', padding: '1rem', borderRadius: '8px', background: 'var(--bg-subtle)' }}>
               <div>
                 <span style={{ display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 700 }}>Fecha Nacimiento</span>
@@ -172,7 +170,6 @@ export default function MedicoView({
               </div>
             </div>
 
-            {/* CAMPOS EDITABLES */}
             <h4 style={{ margin: '0 0 1rem', color: 'var(--text-dark)' }}>Datos editables</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
@@ -184,14 +181,24 @@ export default function MedicoView({
                 <input type="text" className="input-control" value={formEdicion.telefono} onChange={e => onFormEdicionChange('telefono', e.target.value)} />
               </div>
               <div>
-                <label className="input-label">Estado</label>
+                <label className="input-label">Estado Derivación</label>
                 <select className="input-control" value={formEdicion.estado} onChange={e => onFormEdicionChange('estado', e.target.value)}>
                   <option value="ESPERA">ESPERA</option>
+                  <option value="AGENDADO">AGENDADO</option>
                   <option value="ATENDIDO">ATENDIDO</option>
                   <option value="CANCELADO">CANCELADO</option>
                 </select>
               </div>
+              <div>
+                <label className="input-label">Estado Cita</label>
+                <select className="input-control" value={formEdicion.estadoCita} onChange={e => onFormEdicionChange('estadoCita', e.target.value)}>
+                  <option value="PROGRAMADA">PROGRAMADA</option>
+                  <option value="COMPLETADA">COMPLETADA</option>
+                  <option value="CANCELADA">CANCELADA</option>
+                </select>
+              </div>
             </div>
+
             <div style={{ marginBottom: '1.5rem' }}>
               <label className="input-label">Diagnóstico / Indicaciones del Médico</label>
               <textarea
@@ -204,7 +211,6 @@ export default function MedicoView({
               />
             </div>
 
-            {/* BOTONES */}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button className="btn btn-outline" onClick={onCancelarEdicion}>Cancelar</button>
               <button className="btn btn-primary" onClick={onGuardarCambios} disabled={guardando}>

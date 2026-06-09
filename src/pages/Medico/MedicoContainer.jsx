@@ -120,7 +120,8 @@ export default function MedicoContainer({ user }) {
       email: pac.email || '',
       telefono: pac.telefono || '',
       diagnostico: listaItem.diagnostico || '',
-      estado: listaItem.estado || 'ESPERA'
+      estado: listaItem.estado || 'ESPERA',
+      estadoCita: cita.estado || 'PROGRAMADA'
     });
   };
 
@@ -137,7 +138,20 @@ export default function MedicoContainer({ user }) {
       });
 
       if (pacienteEditando.id) {
-        await apiFetch(`/api/listas/${pacienteEditando.id}/estado?estado=${formEdicion.estado}`, token, 'PUT', null);
+        await apiFetch(
+          `/api/listas/${pacienteEditando.id}/estado?estado=${formEdicion.estado}&diagnostico=${encodeURIComponent(formEdicion.diagnostico)}`,
+          token, 'PUT', null
+        );
+      }
+
+      if (citaActual?.id) {
+        await apiFetch(`/api/citas/${citaActual.id}`, token, 'PUT', {
+          cita: {
+            ...citaActual,
+            estado: formEdicion.estadoCita
+          },
+          medicoId: citaActual.medico?.id
+        });
       }
 
       setMensajeAccion({ tipo: 'exito', texto: 'Datos actualizados correctamente.' });
