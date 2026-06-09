@@ -17,6 +17,11 @@ export default function PortalPacienteView({
   const [mostrarHistorialCitas, setMostrarHistorialCitas] = useState(false);
   const [ocultadas, setOcultadas] = useState([]);
   const [citaDetalle, setCitaDetalle] = useState(null);
+  const [paginaDerivaciones, setPaginaDerivaciones] = useState(0);
+  const [paginaCitas, setPaginaCitas] = useState(0);
+  const [paginaHistorialDer, setPaginaHistorialDer] = useState(0);
+  const [paginaHistorialCitas, setPaginaHistorialCitas] = useState(0);
+  const PAGE_SIZE = 5;
 
   const prioridadColor = (prioridad) => {
     if (prioridad === 'ALTA') return 'var(--status-high-text)';
@@ -31,7 +36,31 @@ export default function PortalPacienteView({
   const citasActivas = citas.filter(c => c.estado === 'PROGRAMADA');
   const citasHistorial = citas.filter(c => c.estado !== 'PROGRAMADA' && !ocultadas.includes(c.id));
 
+  const derivacionesPagina = derivacionesActivas.slice(paginaDerivaciones * PAGE_SIZE, (paginaDerivaciones + 1) * PAGE_SIZE);
+  const totalPaginasDerivaciones = Math.ceil(derivacionesActivas.length / PAGE_SIZE);
+
+  const citasPagina = citasActivas.slice(paginaCitas * PAGE_SIZE, (paginaCitas + 1) * PAGE_SIZE);
+  const totalPaginasCitas = Math.ceil(citasActivas.length / PAGE_SIZE);
+
+  const historialDerPagina = derivacionesHistorial.slice(paginaHistorialDer * PAGE_SIZE, (paginaHistorialDer + 1) * PAGE_SIZE);
+  const totalPaginasHistorialDer = Math.ceil(derivacionesHistorial.length / PAGE_SIZE);
+
+  const historialCitasPagina = citasHistorial.slice(paginaHistorialCitas * PAGE_SIZE, (paginaHistorialCitas + 1) * PAGE_SIZE);
+  const totalPaginasHistorialCitas = Math.ceil(citasHistorial.length / PAGE_SIZE);
+
   const getDerivacion = (cita) => listas.find(l => l.id === cita.listaEsperaId || l.pacienteId === cita.pacienteId);
+
+  const Paginacion = ({ pagina, totalPaginas, setPagina }) => (
+    totalPaginas > 1 ? (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+        <span style={{ fontSize: '0.82rem', color: 'var(--text-gray)' }}>Página {pagina + 1} de {totalPaginas}</span>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="btn btn-outline" style={{ padding: '0.3rem 0.8rem', fontSize: '0.82rem' }} onClick={() => setPagina(pagina - 1)} disabled={pagina === 0}>Anterior</button>
+          <button className="btn btn-outline" style={{ padding: '0.3rem 0.8rem', fontSize: '0.82rem' }} onClick={() => setPagina(pagina + 1)} disabled={pagina >= totalPaginas - 1}>Siguiente</button>
+        </div>
+      </div>
+    ) : null
+  );
 
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', flexDirection: 'column', gap: '1rem' }}>
@@ -147,27 +176,23 @@ export default function PortalPacienteView({
               {derivacionesActivas.length === 0
                 ? <div style={{ color: 'var(--text-gray)', textAlign: 'center', padding: '1.5rem' }}>No tienes derivaciones activas.</div>
                 : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {derivacionesActivas.map(item => (
-                      <div key={item.id} style={{
-                        display: 'flex', alignItems: 'center', gap: '1.25rem',
-                        padding: '1rem 1.25rem', borderRadius: '8px',
-                        background: 'var(--bg-subtle)',
-                        borderLeft: `3px solid ${prioridadColor(item.prioridad)}`
-                      }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.3rem' }}>
-                            <span style={{ fontWeight: 700, color: 'var(--text-dark)', fontSize: '0.95rem' }}>{item.especialidad}</span>
-                            <span className={`status-badge badge-${item.prioridad?.toLowerCase()}`}>{item.prioridad}</span>
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {derivacionesPagina.map(item => (
+                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1rem 1.25rem', borderRadius: '8px', background: 'var(--bg-subtle)', borderLeft: `3px solid ${prioridadColor(item.prioridad)}` }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.3rem' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--text-dark)', fontSize: '0.95rem' }}>{item.especialidad}</span>
+                              <span className={`status-badge badge-${item.prioridad?.toLowerCase()}`}>{item.prioridad}</span>
+                            </div>
+                            {item.diagnostico && <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-gray)', lineHeight: '1.4' }}>{item.diagnostico}</p>}
                           </div>
-                          {item.diagnostico && (
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-gray)', lineHeight: '1.4' }}>{item.diagnostico}</p>
-                          )}
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600, minWidth: '70px', textAlign: 'right' }}>{item.estado}</span>
                         </div>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600, minWidth: '70px', textAlign: 'right' }}>{item.estado}</span>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                    <Paginacion pagina={paginaDerivaciones} totalPaginas={totalPaginasDerivaciones} setPagina={setPaginaDerivaciones} />
+                  </>
                 )
               }
             </div>
@@ -185,28 +210,23 @@ export default function PortalPacienteView({
               </div>
             </div>
             {mostrarHistorial && (
-              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {derivacionesHistorial.map(item => (
-                  <div key={item.id} style={{
-                    display: 'flex', alignItems: 'center', gap: '1.25rem',
-                    padding: '1rem 1.25rem', borderRadius: '8px',
-                    background: 'var(--bg-subtle)', opacity: 0.75
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-dark)', fontSize: '0.95rem' }}>{item.especialidad}</span>
-                      {item.diagnostico && <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--text-gray)' }}>{item.diagnostico}</p>}
+              <>
+                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {historialDerPagina.map(item => (
+                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1rem 1.25rem', borderRadius: '8px', background: 'var(--bg-subtle)', opacity: 0.75 }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-dark)', fontSize: '0.95rem' }}>{item.especialidad}</span>
+                        {item.diagnostico && <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--text-gray)' }}>{item.diagnostico}</p>}
+                      </div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600 }}>{item.estado}</span>
+                      {item.estado === 'CANCELADO' && (
+                        <button onClick={() => ocultarItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: '0.85rem', padding: '0.2rem 0.4rem' }} title="Eliminar de vista">✕</button>
+                      )}
                     </div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600 }}>{item.estado}</span>
-                    {item.estado === 'CANCELADO' && (
-                      <button
-                        onClick={() => ocultarItem(item.id)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: '0.85rem', padding: '0.2rem 0.4rem' }}
-                        title="Eliminar de vista"
-                      >✕</button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                <Paginacion pagina={paginaHistorialDer} totalPaginas={totalPaginasHistorialDer} setPagina={setPaginaHistorialDer} />
+              </>
             )}
           </div>
         )}
@@ -225,32 +245,28 @@ export default function PortalPacienteView({
               {citasActivas.length === 0
                 ? <div style={{ color: 'var(--text-gray)', textAlign: 'center', padding: '1.5rem' }}>No tienes citas programadas.</div>
                 : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {citasActivas.map(c => (
-                      <div key={c.id}
-                        onClick={() => setCitaDetalle(c)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '1.25rem',
-                          padding: '1rem 1.25rem', borderRadius: '8px',
-                          background: 'var(--bg-subtle)',
-                          borderLeft: '3px solid var(--color-primary)',
-                          cursor: 'pointer'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#eef6fd'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
-                      >
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, color: 'var(--text-dark)', fontSize: '0.95rem', marginBottom: '0.2rem' }}>
-                            {c.medico ? `${c.medico.nombre}` : 'Médico no asignado'}
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {citasPagina.map(c => (
+                        <div key={c.id} onClick={() => setCitaDetalle(c)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1rem 1.25rem', borderRadius: '8px', background: 'var(--bg-subtle)', borderLeft: '3px solid var(--color-primary)', cursor: 'pointer' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#eef6fd'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-dark)', fontSize: '0.95rem', marginBottom: '0.2rem' }}>
+                              {c.medico ? `${c.medico.nombre}` : 'Médico no asignado'}
+                            </div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-gray)' }}>
+                              {c.medico?.especialidad} — {c.fechaHora ? new Date(c.fechaHora).toLocaleString('es-CL') : '—'}
+                            </div>
                           </div>
-                          <div style={{ fontSize: '0.85rem', color: 'var(--text-gray)' }}>
-                            {c.medico?.especialidad} — {c.fechaHora ? new Date(c.fechaHora).toLocaleString('es-CL') : '—'}
-                          </div>
+                          <span style={{ fontSize: '0.82rem', color: 'var(--color-primary)', fontWeight: 600 }}>Ver detalle →</span>
                         </div>
-                        <span style={{ fontSize: '0.82rem', color: 'var(--color-primary)', fontWeight: 600 }}>Ver detalle →</span>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                    <Paginacion pagina={paginaCitas} totalPaginas={totalPaginasCitas} setPagina={setPaginaCitas} />
+                  </>
                 )
               }
             </div>
@@ -268,35 +284,29 @@ export default function PortalPacienteView({
               </div>
             </div>
             {mostrarHistorialCitas && (
-              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {citasHistorial.map(c => (
-                  <div key={c.id}
-                    onClick={() => setCitaDetalle(c)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '1.25rem',
-                      padding: '1rem 1.25rem', borderRadius: '8px',
-                      background: 'var(--bg-subtle)', opacity: 0.75, cursor: 'pointer'
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-dark)', fontSize: '0.95rem', marginBottom: '0.2rem' }}>
-                        {c.medico ? c.medico.nombre : 'Médico no asignado'}
+              <>
+                <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {historialCitasPagina.map(c => (
+                    <div key={c.id} onClick={() => setCitaDetalle(c)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1rem 1.25rem', borderRadius: '8px', background: 'var(--bg-subtle)', opacity: 0.75, cursor: 'pointer' }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-dark)', fontSize: '0.95rem', marginBottom: '0.2rem' }}>
+                          {c.medico ? c.medico.nombre : 'Médico no asignado'}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-gray)' }}>
+                          {c.medico?.especialidad} — {c.fechaHora ? new Date(c.fechaHora).toLocaleString('es-CL') : '—'}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-gray)' }}>
-                        {c.medico?.especialidad} — {c.fechaHora ? new Date(c.fechaHora).toLocaleString('es-CL') : '—'}
-                      </div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600 }}>{c.estado}</span>
+                      {c.estado === 'CANCELADA' && (
+                        <button onClick={e => { e.stopPropagation(); ocultarItem(c.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: '0.85rem', padding: '0.2rem 0.4rem' }} title="Eliminar de vista">✕</button>
+                      )}
                     </div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-light)', fontWeight: 600 }}>{c.estado}</span>
-                    {c.estado === 'CANCELADA' && (
-                      <button
-                        onClick={e => { e.stopPropagation(); ocultarItem(c.id); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-light)', fontSize: '0.85rem', padding: '0.2rem 0.4rem' }}
-                        title="Eliminar de vista"
-                      >✕</button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                <Paginacion pagina={paginaHistorialCitas} totalPaginas={totalPaginasHistorialCitas} setPagina={setPaginaHistorialCitas} />
+              </>
             )}
           </div>
         )}
@@ -304,17 +314,8 @@ export default function PortalPacienteView({
 
       {/* MODAL DETALLE CITA */}
       {citaDetalle && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.45)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '1rem'
-        }} onClick={() => setCitaDetalle(null)}>
-          <div style={{
-            backgroundColor: 'white', borderRadius: '12px',
-            width: '100%', maxWidth: '480px',
-            padding: '2rem', boxShadow: '0 16px 48px rgba(0,0,0,0.2)'
-          }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={() => setCitaDetalle(null)}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', width: '100%', maxWidth: '480px', padding: '2rem', boxShadow: '0 16px 48px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, color: 'var(--text-dark)', fontSize: '1.2rem' }}>Detalle de Cita</h2>
@@ -327,19 +328,14 @@ export default function PortalPacienteView({
                 <span style={{ fontWeight: 600, color: 'var(--text-dark)' }}>{citaDetalle.medico?.nombre || '—'}</span>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-gray)' }}>{citaDetalle.medico?.especialidad || '—'}</span>
               </div>
-
               <div style={{ padding: '0.85rem 1rem', borderRadius: '8px', background: 'var(--bg-subtle)' }}>
                 <span style={{ display: 'block', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 700, marginBottom: '0.25rem' }}>Fecha y Hora</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-dark)' }}>
-                  {citaDetalle.fechaHora ? new Date(citaDetalle.fechaHora).toLocaleString('es-CL') : '—'}
-                </span>
+                <span style={{ fontWeight: 600, color: 'var(--text-dark)' }}>{citaDetalle.fechaHora ? new Date(citaDetalle.fechaHora).toLocaleString('es-CL') : '—'}</span>
               </div>
-
               <div style={{ padding: '0.85rem 1rem', borderRadius: '8px', background: 'var(--bg-subtle)' }}>
                 <span style={{ display: 'block', fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-light)', fontWeight: 700, marginBottom: '0.25rem' }}>Estado</span>
                 <span className={`status-badge badge-${citaDetalle.estado?.toLowerCase()}`}>{citaDetalle.estado}</span>
               </div>
-
               {(() => {
                 const derivacion = getDerivacion(citaDetalle);
                 return derivacion?.diagnostico ? (
@@ -352,12 +348,8 @@ export default function PortalPacienteView({
             </div>
 
             {citaDetalle.estado === 'PROGRAMADA' && (
-              <button
-                className="btn btn-outline"
-                style={{ width: '100%', marginTop: '1.5rem', padding: '0.75rem', color: 'var(--status-high-text)', borderColor: 'var(--status-high-text)' }}
-                onClick={() => { onCancelarCita(citaDetalle.id); setCitaDetalle(null); }}
-                disabled={cancelando}
-              >
+              <button className="btn btn-outline" style={{ width: '100%', marginTop: '1.5rem', padding: '0.75rem', color: 'var(--status-high-text)', borderColor: 'var(--status-high-text)' }}
+                onClick={() => { onCancelarCita(citaDetalle.id); setCitaDetalle(null); }} disabled={cancelando}>
                 Cancelar Cita
               </button>
             )}
