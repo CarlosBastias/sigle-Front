@@ -14,6 +14,9 @@ import DashboardContainer from './pages/Dashboard/DashboardContainer';
 import MedicoContainer from './pages/Medico/MedicoContainer';
 import NotFoundView from './pages/NotFound/NotFoundView';
 
+const EMAILS_ADMIN = ['admin@rednorte.cl'];
+const EMAILS_MEDICO = ['medico@rednorte.cl'];
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,8 +26,8 @@ export default function App() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const isAdmin = firebaseUser.email.includes("admin");
-        const isMedico = firebaseUser.email.includes("medico");
+        const isAdmin = EMAILS_ADMIN.includes(firebaseUser.email);
+        const isMedico = EMAILS_MEDICO.includes(firebaseUser.email);
         const token = await firebaseUser.getIdToken();
         setUser({
           uid: firebaseUser.uid,
