@@ -1,36 +1,45 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-// Importación de Estilos Modulares
 import './styles/global.css';
 import './styles/layout.css';
 import './styles/components.css';
 
-// Importación de Componentes
-import Login from './components/Login';
-import Navbar from './components/Navbar';
-import PortalPaciente from './pages/PortalPaciente';
-import Dashboard from './pages/Dashboard';
+import LoginContainer from './components/Login/LoginContainer';
+import NavbarView from './components/Navbar/NavbarView';
+import PortalPacienteContainer from './pages/PortalPaciente/PortalPacienteContainer';
+import DashboardContainer from './pages/Dashboard/DashboardContainer';
+import MedicoContainer from './pages/Medico/MedicoContainer';
+import NotFoundView from './pages/NotFound/NotFoundView';
+
+const EMAILS_ADMIN = ['admin@rednorte.cl'];
+const EMAILS_MEDICO = ['medico@rednorte.cl'];
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notificaciones, setNotificaciones] = useState([]);
+  const [marcarLeidas, setMarcarLeidas] = useState(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const isFirebaseAdmin = firebaseUser.email.includes("admin");
+        const isAdmin = EMAILS_ADMIN.includes(firebaseUser.email);
+        const isMedico = EMAILS_MEDICO.includes(firebaseUser.email);
         const token = await firebaseUser.getIdToken();
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          role: isFirebaseAdmin ? 'ADMIN' : 'PACIENTE',
-          name: isFirebaseAdmin ? 'MD. Administrador' : firebaseUser.email,
+          role: isAdmin ? 'ADMIN' : isMedico ? 'MEDICO' : 'PACIENTE',
+          name: isAdmin ? 'MD. Administrador' : firebaseUser.email,
           token: token
         });
       } else {
         setUser(null);
+        setNotificaciones([]);
+        setMarcarLeidas(null);
       }
       setLoading(false);
     });
@@ -47,15 +56,50 @@ export default function App() {
   }
 
   if (!user) {
-    return <Login onMockLogin={setUser} />;
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="*" element={<LoginContainer />} />
+        </Routes>
+      </BrowserRouter>
+    );
   }
 
+  const getHomeByRole = () => {
+    if (user.role === 'ADMIN') return <DashboardContainer user={user} />;
+    if (user.role === 'MEDICO') return <MedicoContainer user={user} />;
+    return (
+      <PortalPacienteContainer
+        user={user}
+        onNotificaciones={setNotificaciones}
+        onMarcarLeidas={(fn) => setMarcarLeidas(() => fn)}
+      />
+    );
+  };
+
   return (
-    <>
-      <Navbar user={user} onLogout={() => { signOut(auth); setUser(null); }} />
+    <BrowserRouter>
+      <NavbarView
+        user={user}
+        onLogout={() => { signOut(auth); setUser(null); }}
+        notificaciones={notificaciones}
+        onLimpiarNotificaciones={marcarLeidas || (() => setNotificaciones([]))}
+      />
       <main>
-        {user.role === 'ADMIN' ? <Dashboard user={user} /> : <PortalPaciente user={user} />}
+        <Routes>
+          <Route path="/" element={getHomeByRole()} />
+          <Route path="/dashboard" element={user.role === 'ADMIN' ? <DashboardContainer user={user} /> : <Navigate to="/" />} />
+          <Route path="/medico" element={user.role === 'MEDICO' ? <MedicoContainer user={user} /> : <Navigate to="/" />} />
+          <Route path="/paciente" element={user.role === 'PACIENTE' ? (
+            <PortalPacienteContainer
+              user={user}
+              onNotificaciones={setNotificaciones}
+              onMarcarLeidas={(fn) => setMarcarLeidas(() => fn)}
+            />
+          ) : <Navigate to="/" />} />
+          <Route path="*" element={<NotFoundView onVolver={() => window.location.href = '/'} />} />
+        </Routes>
       </main>
-    </>
+    </BrowserRouter>
   );
 }
