@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '../../firebase';
+import { setDatosRegistroPendiente } from '../../utils/pendingRegistration';
 import LoginView from './LoginView';
+
+const SOLO_LETRAS = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
 
 export default function LoginContainer() {
   const [modo, setModo] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [erroresForm, setErroresForm] = useState({});
@@ -25,6 +30,12 @@ export default function LoginContainer() {
     if (modo === 'registro') {
       if (!confirmPassword.trim()) errores.confirmPassword = 'Confirma tu contraseña';
       else if (password !== confirmPassword) errores.confirmPassword = 'Las contraseñas no coinciden';
+
+      if (!nombre.trim()) errores.nombre = 'El nombre es obligatorio';
+      else if (!SOLO_LETRAS.test(nombre)) errores.nombre = 'El nombre solo puede contener letras';
+
+      if (!apellido.trim()) errores.apellido = 'El apellido es obligatorio';
+      else if (!SOLO_LETRAS.test(apellido)) errores.apellido = 'El apellido solo puede contener letras';
     }
 
     return errores;
@@ -44,7 +55,18 @@ export default function LoginContainer() {
 
     try {
       if (modo === 'registro') {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const nombreLimpio = nombre.trim();
+        const apellidoLimpio = apellido.trim();
+
+        // Se guarda ANTES de crear la cuenta (síncrono, sin await de por
+        // medio) para que App.jsx pueda leerlo apenas Firebase dispare
+        // onAuthStateChanged, sin importar el orden en que resuelvan las promesas.
+        setDatosRegistroPendiente({ nombre: nombreLimpio, apellido: apellidoLimpio });
+
+        const credenciales = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(credenciales.user, {
+          displayName: `${nombreLimpio} ${apellidoLimpio}`.trim()
+        });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -69,6 +91,8 @@ export default function LoginContainer() {
     setEmail('');
     setPassword('');
     setConfirmPassword('');
+    setNombre('');
+    setApellido('');
     setErroresForm({});
   };
 
@@ -78,6 +102,8 @@ export default function LoginContainer() {
       email={email}
       password={password}
       confirmPassword={confirmPassword}
+      nombre={nombre}
+      apellido={apellido}
       error={error}
       loading={loading}
       erroresForm={erroresForm}
@@ -86,6 +112,8 @@ export default function LoginContainer() {
       onEmailChange={(e) => { setEmail(e.target.value); setErroresForm({...erroresForm, email: ''}); }}
       onPasswordChange={(e) => { setPassword(e.target.value); setErroresForm({...erroresForm, password: ''}); }}
       onConfirmPasswordChange={(e) => { setConfirmPassword(e.target.value); setErroresForm({...erroresForm, confirmPassword: ''}); }}
+      onNombreChange={(e) => { setNombre(e.target.value); setErroresForm({...erroresForm, nombre: ''}); }}
+      onApellidoChange={(e) => { setApellido(e.target.value); setErroresForm({...erroresForm, apellido: ''}); }}
     />
   );
 }

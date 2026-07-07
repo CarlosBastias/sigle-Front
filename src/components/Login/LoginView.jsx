@@ -6,10 +6,11 @@ function InputError({ error }) {
 }
 
 export default function LoginView({
-  modo, email, password, confirmPassword,
+  modo, email, password, confirmPassword, nombre, apellido,
   error, loading, erroresForm,
   onSubmit, onCambiarModo,
-  onEmailChange, onPasswordChange, onConfirmPasswordChange
+  onEmailChange, onPasswordChange, onConfirmPasswordChange,
+  onNombreChange, onApellidoChange
 }) {
   return (
     <div className="auth-wrapper">
@@ -60,6 +61,31 @@ export default function LoginView({
           )}
 
           <form onSubmit={onSubmit}>
+            {modo === 'registro' && (
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div className="input-group" style={{ flex: 1 }}>
+                  <label className="input-label">Nombre</label>
+                  <input
+                    type="text" className="input-control"
+                    placeholder="Juan"
+                    value={nombre} onChange={onNombreChange}
+                    style={{ borderColor: erroresForm?.nombre ? 'var(--status-high-text)' : '' }}
+                  />
+                  <InputError error={erroresForm?.nombre} />
+                </div>
+                <div className="input-group" style={{ flex: 1 }}>
+                  <label className="input-label">Apellido</label>
+                  <input
+                    type="text" className="input-control"
+                    placeholder="Pérez"
+                    value={apellido} onChange={onApellidoChange}
+                    style={{ borderColor: erroresForm?.apellido ? 'var(--status-high-text)' : '' }}
+                  />
+                  <InputError error={erroresForm?.apellido} />
+                </div>
+              </div>
+            )}
+
             <div className="input-group">
               <label className="input-label">Correo Electrónico</label>
               <input
