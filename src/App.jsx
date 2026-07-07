@@ -13,29 +13,71 @@ import PortalPacienteContainer from './pages/PortalPaciente/PortalPacienteContai
 import DashboardContainer from './pages/Dashboard/DashboardContainer';
 import MedicoContainer from './pages/Medico/MedicoContainer';
 import NotFoundView from './pages/NotFound/NotFoundView';
+import { tomarDatosRegistroPendiente } from './utils/pendingRegistration';
 
-const EMAILS_ADMIN = ['admin@rednorte.cl'];
-const EMAILS_MEDICO = ['medico@rednorte.cl'];
+const API = import.meta.env.VITE_API_BASE_URL;
+
+// Mapea el rol que maneja el CoreService al rol que usa el front para
+// decidir qué portal mostrar. ADMINISTRATIVO y DIRECCION ven el portal
+// de administración; MEDICO ve el portal médico; el resto, portal paciente.
+const mapRolBackendARol = (rolBackend) => {
+  if (rolBackend === 'ADMINISTRATIVO' || rolBackend === 'DIRECCION') return 'ADMIN';
+  if (rolBackend === 'MEDICO') return 'MEDICO';
+  return 'PACIENTE';
+};
+
+// Obtiene el usuario desde el CoreService (lo crea la primera vez). El rol
+// se decide siempre en el backend (dominio @rednorte-medico.com => MEDICO),
+// nunca confiando en datos que vengan solo del navegador.
+async function sincronizarUsuarioConBackend(firebaseUser, token) {
+  const pendientes = tomarDatosRegistroPendiente();
+
+  const res = await fetch(`${API}/api/auth/usuario`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      firebaseUid: firebaseUser.uid,
+      email: firebaseUser.email,
+      nombre: pendientes?.nombre || firebaseUser.email.split('@')[0],
+      apellido: pendientes?.apellido || ''
+    })
+  });
+
+  if (!res.ok) throw new Error(`Error ${res.status} al sincronizar usuario`);
+  return res.json();
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
   const [notificaciones, setNotificaciones] = useState([]);
   const [marcarLeidas, setMarcarLeidas] = useState(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const isAdmin = EMAILS_ADMIN.includes(firebaseUser.email);
-        const isMedico = EMAILS_MEDICO.includes(firebaseUser.email);
-        const token = await firebaseUser.getIdToken();
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          role: isAdmin ? 'ADMIN' : isMedico ? 'MEDICO' : 'PACIENTE',
-          name: isAdmin ? 'MD. Administrador' : firebaseUser.email,
-          token: token
-        });
+        try {
+          const token = await firebaseUser.getIdToken();
+          const usuario = await sincronizarUsuarioConBackend(firebaseUser, token);
+
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            role: mapRolBackendARol(usuario.rol),
+            name: `${usuario.nombre} ${usuario.apellido}`.trim() || firebaseUser.email,
+            token
+          });
+          setAuthError(null);
+        } catch (e) {
+          console.error('[Auth] No fue posible sincronizar el usuario con el servidor:', e);
+          setAuthError('No fue posible validar tu cuenta. Intenta nuevamente.');
+          setUser(null);
+          signOut(auth);
+        }
       } else {
         setUser(null);
         setNotificaciones([]);
@@ -58,6 +100,15 @@ export default function App() {
   if (!user) {
     return (
       <BrowserRouter>
+        {authError && (
+          <div style={{
+            position: 'fixed', top: '1rem', left: '50%', transform: 'translateX(-50%)',
+            backgroundColor: 'var(--status-high-bg)', color: 'var(--status-high-text)',
+            padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: '500', zIndex: 2000
+          }}>
+            {authError}
+          </div>
+        )}
         <Routes>
           <Route path="*" element={<LoginContainer />} />
         </Routes>
