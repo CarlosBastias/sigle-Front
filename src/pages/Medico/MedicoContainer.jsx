@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../../firebase';
 import MedicoView from './MedicoView';
+import { ESPECIALIDADES } from '../PortalPaciente/PortalPacienteContainer';
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -20,8 +21,8 @@ async function apiFetch(path, token, method = 'GET', body = null) {
 }
 
 export default function MedicoContainer({ user }) {
-  const [medicos, setMedicos] = useState([]);
   const [medicoSeleccionado, setMedicoSeleccionado] = useState(null);
+  const [establecimientos, setEstablecimientos] = useState([]);
   const [citas, setCitas] = useState([]);
   const [pacientesLista, setPacientesLista] = useState([]);
   const [pacientesMap, setPacientesMap] = useState({});
@@ -35,20 +36,32 @@ export default function MedicoContainer({ user }) {
   const [formEdicion, setFormEdicion] = useState({});
   const [guardando, setGuardando] = useState(false);
 
+  // Formulario de primera vez (completar ficha propia del médico)
+  const [formPerfil, setFormPerfil] = useState({ rut: '', nombre: '', especialidad: '', establecimientoId: '' });
+  const [guardandoPerfil, setGuardandoPerfil] = useState(false);
+  const [errorPerfil, setErrorPerfil] = useState(null);
+
+  // Al entrar, busca si esta cuenta ya tiene una ficha de médico creada.
+  // Si no la tiene, se le pide completar sus datos una sola vez; a partir
+  // de ahí queda disponible automáticamente para que los pacientes lo agenden.
   useEffect(() => {
     const cargar = async () => {
       try {
         const token = await auth.currentUser.getIdToken();
-        const med = await apiFetch('/api/citas/medicos', token).catch(() => []);
-        setMedicos(med);
+        const [propio, estabs] = await Promise.all([
+          apiFetch(`/api/citas/medicos/email/${user.email}`, token).catch(() => null),
+          apiFetch('/api/establecimientos', token).catch(() => []),
+        ]);
+        setEstablecimientos(estabs || []);
+        if (propio) setMedicoSeleccionado(propio);
       } catch {
-        setError('Error al cargar médicos.');
+        setError('Error al cargar tu ficha de médico.');
       } finally {
         setLoading(false);
       }
     };
     cargar();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!medicoSeleccionado) return;
@@ -87,15 +100,28 @@ export default function MedicoContainer({ user }) {
     cargar();
   }, [medicoSeleccionado]);
 
-  const seleccionarMedico = (medico) => {
-    setMedicoSeleccionado(medico);
-    setCitas([]);
-    setPacientesLista([]);
-    setPacientesMap({});
-    setPacienteEditando(null);
-    setPacienteCompleto(null);
-    setCitaActual(null);
-    setMensajeAccion(null);
+  const guardarPerfilMedico = async () => {
+    if (!formPerfil.rut.trim() || !formPerfil.nombre.trim() || !formPerfil.especialidad || !formPerfil.establecimientoId) {
+      setErrorPerfil('Completa todos los campos.');
+      return;
+    }
+    setGuardandoPerfil(true);
+    setErrorPerfil(null);
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const nuevoMedico = await apiFetch('/api/citas/medicos', token, 'POST', {
+        rut: formPerfil.rut.trim(),
+        nombre: formPerfil.nombre.trim(),
+        especialidad: formPerfil.especialidad,
+        establecimientoId: parseInt(formPerfil.establecimientoId),
+        email: user.email,
+      });
+      setMedicoSeleccionado(nuevoMedico);
+    } catch {
+      setErrorPerfil('No fue posible guardar tu ficha. Verifica los datos e intenta de nuevo.');
+    } finally {
+      setGuardandoPerfil(false);
+    }
   };
 
   const editarPaciente = (cita) => {
@@ -189,8 +215,12 @@ export default function MedicoContainer({ user }) {
 
   return (
     <MedicoView
-      medicos={medicos}
       medicoSeleccionado={medicoSeleccionado}
+      establecimientos={establecimientos}
+      especialidades={ESPECIALIDADES}
+      formPerfil={formPerfil}
+      guardandoPerfil={guardandoPerfil}
+      errorPerfil={errorPerfil}
       citas={citas}
       pacientesLista={pacientesLista}
       pacientesMap={pacientesMap}
@@ -202,7 +232,8 @@ export default function MedicoContainer({ user }) {
       pacienteCompleto={pacienteCompleto}
       formEdicion={formEdicion}
       guardando={guardando}
-      onSeleccionarMedico={seleccionarMedico}
+      onFormPerfilChange={(field, value) => setFormPerfil({ ...formPerfil, [field]: value })}
+      onGuardarPerfil={guardarPerfilMedico}
       onEditarPaciente={editarPaciente}
       onCancelarEdicion={() => { setPacienteEditando(null); setPacienteCompleto(null); setCitaActual(null); }}
       onFormEdicionChange={(field, value) => setFormEdicion({ ...formEdicion, [field]: value })}

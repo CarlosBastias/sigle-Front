@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 
 export default function MedicoView({
-  medicos, medicoSeleccionado, citas, pacientesLista, pacientesMap,
+  medicoSeleccionado, establecimientos, especialidades,
+  formPerfil, guardandoPerfil, errorPerfil,
+  citas, pacientesLista, pacientesMap,
   loading, loadingPacientes, error, mensajeAccion,
   pacienteEditando, pacienteCompleto, formEdicion, guardando,
-  onSeleccionarMedico, onEditarPaciente, onCancelarEdicion,
+  onFormPerfilChange, onGuardarPerfil,
+  onEditarPaciente, onCancelarEdicion,
   onFormEdicionChange, onGuardarCambios
 }) {
   const [fechaFiltro, setFechaFiltro] = useState(new Date().toISOString().split('T')[0]);
@@ -38,28 +41,80 @@ export default function MedicoView({
           </div>
         )}
 
-        {/* SELECTOR DE MÉDICO */}
-        <div className="premium-card" style={{ marginBottom: '3rem' }}>
-          <div className="card-header">
-            <h3 style={{ margin: 0 }}>¿Quién eres?</h3>
-          </div>
-          <div style={{ marginTop: '1rem', maxWidth: '400px' }}>
-            <label className="input-label">Selecciona tu nombre</label>
-            <select
-              className="input-control"
-              value={medicoSeleccionado?.id || ''}
-              onChange={e => {
-                const med = medicos.find(m => m.id === parseInt(e.target.value));
-                if (med) onSeleccionarMedico(med);
-              }}
+        {/* PRIMERA VEZ: completar ficha profesional */}
+        {!medicoSeleccionado && (
+          <div className="premium-card" style={{ marginBottom: '3rem' }}>
+            <div className="card-header">
+              <h3 style={{ margin: 0 }}>Completa tu ficha profesional</h3>
+            </div>
+            <p style={{ color: 'var(--text-gray)', marginTop: '0.5rem' }}>
+              Es tu primera vez ingresando al portal médico. Completa tus datos para quedar
+              disponible y que los pacientes puedan agendar hora contigo.
+            </p>
+
+            {errorPerfil && (
+              <div style={{ backgroundColor: 'var(--status-high-bg)', color: 'var(--status-high-text)', padding: '0.75rem 1rem', borderRadius: '8px', margin: '1rem 0', fontWeight: 600 }}>
+                {errorPerfil}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem', maxWidth: '600px' }}>
+              <div>
+                <label className="input-label">Nombre completo</label>
+                <input
+                  type="text" className="input-control"
+                  placeholder="Dr. Juan Pérez"
+                  value={formPerfil.nombre}
+                  onChange={e => onFormPerfilChange('nombre', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="input-label">RUT</label>
+                <input
+                  type="text" className="input-control"
+                  placeholder="12.345.678-9"
+                  value={formPerfil.rut}
+                  onChange={e => onFormPerfilChange('rut', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="input-label">Especialidad</label>
+                <select
+                  className="input-control"
+                  value={formPerfil.especialidad}
+                  onChange={e => onFormPerfilChange('especialidad', e.target.value)}
+                >
+                  <option value="">Selecciona tu especialidad</option>
+                  {especialidades.map(esp => (
+                    <option key={esp} value={esp}>{esp}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="input-label">Establecimiento</label>
+                <select
+                  className="input-control"
+                  value={formPerfil.establecimientoId}
+                  onChange={e => onFormPerfilChange('establecimientoId', e.target.value)}
+                >
+                  <option value="">Selecciona tu establecimiento</option>
+                  {establecimientos.map(e => (
+                    <option key={e.id} value={e.id}>{e.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: '1.5rem' }}
+              onClick={onGuardarPerfil}
+              disabled={guardandoPerfil}
             >
-              <option value="">Selecciona un médico</option>
-              {medicos.map(m => (
-                <option key={m.id} value={m.id}>{m.nombre} — {m.especialidad}</option>
-              ))}
-            </select>
+              {guardandoPerfil ? 'Guardando...' : 'Guardar y continuar'}
+            </button>
           </div>
-        </div>
+        )}
 
         {medicoSeleccionado && (
           <>
