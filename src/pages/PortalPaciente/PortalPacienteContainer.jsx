@@ -45,7 +45,6 @@ export default function PortalPacienteContainer({ user, onNotificaciones, onMarc
   const [error, setError] = useState(null);
   const [medicos, setMedicos] = useState([]);
   const [mensajeCita, setMensajeCita] = useState(null);
-
   const [mostrarFormNuevo, setMostrarFormNuevo] = useState(false);
   const [especialidadNueva, setEspecialidadNueva] = useState('');
   const [diagnosticoNuevo, setDiagnosticoNuevo] = useState('');
@@ -57,6 +56,24 @@ export default function PortalPacienteContainer({ user, onNotificaciones, onMarc
   const [cancelando, setCancelando] = useState(false);
   const [rutNuevo, setRutNuevo] = useState('');
   const [fechaNacimientoNuevo, setFechaNacimientoNuevo] = useState('');
+
+  const refrescarNotificaciones = async (pacienteId) => {
+    if (!pacienteId) return;
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const n = await apiFetch(`/api/pacientes/notificaciones/paciente/${pacienteId}/no-leidas`, token).catch(() => []);
+      setNotificaciones(n);
+      if (onNotificaciones) onNotificaciones(n);
+    } catch {
+    }
+  };
+
+  const refrescarNotificacionesConReintento = async (pacienteId, intentos = 3, esperaMs = 1200) => {
+    for (let i = 0; i < intentos; i++) {
+      await new Promise((resolve) => setTimeout(resolve, esperaMs));
+      await refrescarNotificaciones(pacienteId);
+    }
+  };
 
   useEffect(() => {
     const cargar = async () => {
@@ -97,6 +114,14 @@ export default function PortalPacienteContainer({ user, onNotificaciones, onMarc
     };
     cargar();
   }, [user]);
+
+  useEffect(() => {
+    if (!paciente) return;
+    const intervalo = setInterval(() => {
+      refrescarNotificaciones(paciente.id);
+    }, 20000);
+    return () => clearInterval(intervalo);
+  }, [paciente]);
 
   useEffect(() => {
     if (!medicoIdNuevo || !fechaNueva) { setHorasOcupadasNuevo([]); setHoraNueva(''); return; }
@@ -166,6 +191,8 @@ export default function PortalPacienteContainer({ user, onNotificaciones, onMarc
       setMostrarFormNuevo(false);
       setEspecialidadNueva(''); setDiagnosticoNuevo(''); setMedicoIdNuevo(''); setFechaNueva(''); setHoraNueva('');
       setRutNuevo(''); setFechaNacimientoNuevo('');
+
+      if (pacActualizado) refrescarNotificacionesConReintento(pacActualizado.id);
     } catch {
       setMensajeCita({ tipo: 'error', texto: 'Error al crear la solicitud.' });
     } finally {
@@ -185,6 +212,9 @@ export default function PortalPacienteContainer({ user, onNotificaciones, onMarc
       const token2 = await auth.currentUser.getIdToken();
       const nuevasCitas = await apiFetch(`/api/citas/paciente/${paciente.id}`, token2).catch(() => []);
       setCitas(nuevasCitas);
+
+      
+      refrescarNotificacionesConReintento(paciente.id);
     } catch {
       alert('Error al cancelar la cita.');
     } finally {
