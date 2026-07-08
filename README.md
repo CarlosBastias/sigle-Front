@@ -69,8 +69,6 @@ docker run -p 8080:80 sigle-front
 `nginx.conf` redirige todas las rutas a `index.html` para que funcione el enrutamiento de React Router (SPA).
 
 ## Estructura
-
-```
 src/
 ├── components/
 │   ├── Login/
@@ -92,16 +90,21 @@ src/
 │       └── NotFoundView.jsx
 ├── firebase.js
 └── App.jsx
-```
 
 ## Roles y rutas
 
-| Rol | Detección | Ruta | Vista |
+El rol **no** se determina en el Front por el texto del email; se sincroniza con CoreService en cada login.
+
+1. Al iniciar sesión, `App.jsx` llama a `POST /api/auth/usuario` (CoreService) con el `firebaseUid` y el `email` del usuario. Esto crea al usuario la primera vez, o simplemente lo retorna si ya existe.
+2. CoreService decide el rol real (`PACIENTE`, `MEDICO`, `ADMINISTRATIVO` o `DIRECCION`) — por ejemplo, `MEDICO` se asigna automático si el correo termina en el dominio corporativo `@rednorte-medico.com`. Ver el README de CoreService para el detalle completo de esta lógica.
+3. El Front mapea ese rol de backend a la vista que corresponde:
+
+| Rol backend (CoreService) | Rol Front | Ruta | Vista |
 |---|---|---|---|
-| ADMIN | Email contiene `admin` | `/dashboard` | Dashboard administrativo |
-| MEDICO | Email contiene `medico` | `/medico` | Portal Médico |
-| PACIENTE | Cualquier otro email | `/paciente` | Portal Paciente |
-| — | Ruta no reconocida o rol no reconocido | `*` | Página 404 |
+| `ADMINISTRATIVO` / `DIRECCION` | `ADMIN` | `/dashboard` | Dashboard administrativo |
+| `MEDICO` | `MEDICO` | `/medico` | Portal Médico |
+| `PACIENTE` (o cualquier otro) | `PACIENTE` | `/paciente` | Portal Paciente |
+| — | — | Ruta no reconocida o rol no reconocido | Página 404 |
 
 El token de Firebase (`getIdToken`) se envía como `Authorization: Bearer <token>` en cada petición al API Gateway.
 
