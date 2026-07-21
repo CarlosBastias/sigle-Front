@@ -73,7 +73,7 @@ const defaultProps = {
     it('debería mostrar mensaje vacío cuando no hay citas', () => {
         render(<PortalPacienteView {...defaultProps} citas={[]} />);
 
-        expect(screen.getByText('No tienes citas agendadas.')).toBeInTheDocument();
+        expect(screen.getByText('No tienes citas programadas.')).toBeInTheDocument();
     });
 
     it('debería llamar a onToggleFormNuevo cuando se hace clic en el botón de nueva solicitud', () => {
